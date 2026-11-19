@@ -97,6 +97,9 @@ fn gateway(
         .base_uri(format!("http://{address}{BASE_PATH}"))?
         .listener(listener)
         .topology(topology.clone());
+    // An inner layer: only there does a request carry the base path of the server, which the
+    // federation needs to tell API requests from others (opensovd-core#260). As an outer layer it
+    // would pass every request to the gateway's own routes.
     if let Some(url) = upstream_url {
         tracing::info!(target: "forwarding", "Forwarding to {url}");
         let upstream = upstream::upstream(url)?;
