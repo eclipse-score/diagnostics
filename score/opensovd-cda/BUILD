@@ -51,6 +51,23 @@ rust_test(
     ],
 )
 
+# The ECU databases (MDD) of the CDA's ECU simulator, for an image that runs the CDA against it.
+# They are test data, not the databases of a vehicle.
+pkg_files(
+    name = "cda_test_databases_files",
+    srcs = ["@classic-diagnostic-adapter//testcontainer/odx:mdd"],
+    attributes = pkg_attributes(mode = "0644"),
+    strip_prefix = strip_prefix.files_only(),
+    visibility = ["//visibility:public"],
+)
+
+# The settings of the ECUs of the CDA's ECU simulator that its integration tests make; some of the
+# ECUs need them (protocol, logical gateway address). A consumer appends it to its own configuration.
+exports_files(
+    ["cda-ecu-sim.toml"],
+    visibility = ["//visibility:public"],
+)
+
 rust_junit_test(
     name = "integration_test",
     test = ":integration_test_binary",
