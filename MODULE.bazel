@@ -95,6 +95,16 @@ pip.parse(
 )
 use_repo(pip, "module_template_docs_hub_env")
 
+# Independent DNS-SD client for the gateway's Linux network integration test.
+pip.parse(
+    hub_name = "gateway_test_deps",
+    python_version = _PYTHON_VERSION,
+    requirements_lock = "//score/opensovd-core/tests:requirements.txt",
+)
+use_repo(pip, "gateway_test_deps")
+
+bazel_dep(name = "rules_shell", version = "0.8.0", dev_dependency = True)
+
 # Add GoogleTest dependency
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 

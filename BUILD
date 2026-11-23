@@ -45,6 +45,8 @@ docs(
         "@score_platform//:needs_json",
         "@score_process//:needs_json",
     ],
+    # ide_support also supplies the Python environment used by BasedPyright.
+    deps = ["@gateway_test_deps//zeroconf"],
     scan_code = [
         "//score/opensovd-core:requirement_sources",
     ],
