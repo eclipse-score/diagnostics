@@ -68,7 +68,7 @@ repos:
         require_serial: true
         types: [python]
 
-  # Note: this is super slow, therefore it is last
+  # Note: this is super slow, therefore it is last and only runs when Python files change
   - repo: local
     hooks:
       - id: BasedPyright
@@ -76,6 +76,7 @@ repos:
         entry: bash -c 'bazel run //:ide_support && .venv_docs/bin/python3 -m basedpyright'
         language: system
         pass_filenames: false
+        files: '\.pyi?$'
 
   # Ensure every file has a copyright header as per the Eclipse Foundation's requirements
   - repo: https://github.com/eclipse-score/tooling

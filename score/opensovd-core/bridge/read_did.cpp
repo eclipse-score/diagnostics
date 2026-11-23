@@ -12,11 +12,14 @@
  ********************************************************************************/
 #include "score/opensovd-core/bridge/read_did.h"
 #include "score/mw/diag/uds/negative_response_code.h"
+#include "score/mw/log/logger.h"
 
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -78,6 +81,57 @@ struct RequestState
     ScoreDiagReadCompletion completion;
 };
 
+enum class BridgeErrc : score::result::ErrorCode
+{
+    kInvalidArgument = 1,
+    kBusy = 2,
+};
+
+class BridgeErrorDomain final : public score::result::ErrorDomain
+{
+  public:
+    std::string_view MessageFor(const score::result::ErrorCode& code) const noexcept override
+    {
+        switch (static_cast<BridgeErrc>(code))
+        {
+            case BridgeErrc::kInvalidArgument:
+                return "invalid argument";
+            case BridgeErrc::kBusy:
+                return "reader busy";
+        }
+        return "undefined bridge error";
+    }
+};
+
+const score::result::ErrorDomain& GetBridgeErrorDomain() noexcept
+{
+    static constexpr BridgeErrorDomain bridge_error_domain{};
+    return bridge_error_domain;
+}
+
+score::result::Error MakeBridgeError(const BridgeErrc code) noexcept
+{
+    return score::result::Error{static_cast<score::result::ErrorCode>(code), GetBridgeErrorDomain(), ""};
+}
+
+ScoreDiagStatus ToStatus(const score::result::Error& error) noexcept
+{
+    switch (static_cast<BridgeErrc>(*error))
+    {
+        case BridgeErrc::kInvalidArgument:
+            return SCORE_DIAG_INVALID_ARGUMENT;
+        case BridgeErrc::kBusy:
+            return SCORE_DIAG_BUSY;
+    }
+    return SCORE_DIAG_FAILED;
+}
+
+score::mw::log::Logger& BridgeLogger() noexcept
+{
+    static score::mw::log::Logger& logger = score::mw::log::CreateLogger("DIAG");
+    return logger;
+}
+
 class DemoReader final : public ReadDataByIdentifier
 {
   public:
@@ -131,6 +185,7 @@ void Complete(RequestState& state,
     state.completion(state.context, status, nrc, data, size);
 }
 
+// # req-Id: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__nrc_errors
 void CompleteRead(const std::shared_ptr<RequestState>& state, Admission& admission)
 {
     try
@@ -180,8 +235,15 @@ void CompleteRead(const std::shared_ptr<RequestState>& state, Admission& admissi
                      bytes.size());
         }
     }
+    catch (const std::exception& ex)
+    {
+        // Detached worker: nothing above can catch. Handler code runs here, so a throw must become a failed read.
+        BridgeLogger().LogError() << "read handler threw: " << std::string_view{ex.what()};
+        Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
+    }
     catch (...)
     {
+        BridgeLogger().LogError() << "read handler threw an unknown exception";
         Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
     }
 }
@@ -197,13 +259,38 @@ struct ScoreDiagReadRequest
     std::shared_ptr<RequestState> state;
 };
 
+namespace
+{
+// # req-Id: comp_req__uds_data_bridge__read_admission, comp_req__uds_data_bridge__non_blocking_reads
+score::Result<ScoreDiagReadRequest*> StartRead(ScoreDiagReader& reader,
+                                               void* context,
+                                               ScoreDiagReadCompletion completion)
+{
+    if (reader.state->active_requests.fetch_add(1U) >= 8U)
+    {
+        score::cpp::ignore = reader.state->active_requests.fetch_sub(1U);
+        return score::MakeUnexpected<ScoreDiagReadRequest*>(MakeBridgeError(BridgeErrc::kBusy));
+    }
+    Admission admission{reader.state};
+    auto state = std::make_shared<RequestState>();
+    state->owner = reader.state;
+    state->context = context;
+    state->completion = completion;
+    auto request = std::make_unique<ScoreDiagReadRequest>(ScoreDiagReadRequest{state});
+    std::thread([state, admission = std::move(admission)]() mutable {
+        CompleteRead(state, admission);
+    }).detach();
+    return request.release();
+}
+}  // namespace
+
 namespace score::opensovd::bridge
 {
-ScoreDiagReader* RegisterReadDataByIdentifier(std::shared_ptr<ReadDataByIdentifier> handler)
+score::Result<ScoreDiagReader*> RegisterReadDataByIdentifier(std::shared_ptr<ReadDataByIdentifier> handler)
 {
     if (!handler)
     {
-        return nullptr;
+        return score::MakeUnexpected<ScoreDiagReader*>(MakeBridgeError(BridgeErrc::kInvalidArgument));
     }
     auto state = std::make_shared<HandlerState>();
     state->handler = std::move(handler);
@@ -211,27 +298,64 @@ ScoreDiagReader* RegisterReadDataByIdentifier(std::shared_ptr<ReadDataByIdentifi
 }
 }  // namespace score::opensovd::bridge
 
-extern "C" ScoreDiagReader* score_diag_demo_reader_create(std::uint32_t delay_ms, std::uint8_t nrc)
+// The C entry points are the boundary where exceptions from allocation or thread creation end: they
+// cannot cross the C ABI, so each one turns them into SCORE_DIAG_FAILED.
+
+extern "C" ScoreDiagStatus score_diag_demo_reader_create(std::uint32_t delay_ms,
+                                                         std::uint8_t nrc,
+                                                         ScoreDiagReader** out)
 {
+    if (out == nullptr)
+    {
+        return SCORE_DIAG_INVALID_ARGUMENT;
+    }
+    *out = nullptr;
     try
     {
-        return score::opensovd::bridge::RegisterReadDataByIdentifier(std::make_shared<DemoReader>(delay_ms, nrc));
+        auto reader =
+            score::opensovd::bridge::RegisterReadDataByIdentifier(std::make_shared<DemoReader>(delay_ms, nrc));
+        if (!reader.has_value())
+        {
+            return ToStatus(reader.error());
+        }
+        *out = reader.value();
+        return SCORE_DIAG_OK;
+    }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "reader registration threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
     }
     catch (...)
     {
-        return nullptr;
+        BridgeLogger().LogError() << "reader registration threw an unknown exception";
+        return SCORE_DIAG_FAILED;
     }
 }
 
-extern "C" ScoreDiagReader* score_diag_reader_clone(const ScoreDiagReader* reader)
+extern "C" ScoreDiagStatus score_diag_reader_clone(const ScoreDiagReader* reader, ScoreDiagReader** out)
 {
+    if (reader == nullptr || out == nullptr)
+    {
+        return SCORE_DIAG_INVALID_ARGUMENT;
+    }
+    *out = nullptr;
     try
     {
-        return reader == nullptr ? nullptr : new ScoreDiagReader{reader->state};
+        *out = new ScoreDiagReader{reader->state};
+        return SCORE_DIAG_OK;
+    }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "reader clone threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
     }
     catch (...)
     {
-        return nullptr;
+        BridgeLogger().LogError() << "reader clone threw an unknown exception";
+        return SCORE_DIAG_FAILED;
     }
 }
 
@@ -240,34 +364,36 @@ extern "C" void score_diag_reader_release(ScoreDiagReader* reader)
     delete reader;
 }
 
-extern "C" ScoreDiagReadRequest* score_diag_read_start(ScoreDiagReader* reader,
-                                                       void* context,
-                                                       ScoreDiagReadCompletion completion)
+extern "C" ScoreDiagStatus score_diag_read_start(ScoreDiagReader* reader,
+                                                 void* context,
+                                                 ScoreDiagReadCompletion completion,
+                                                 ScoreDiagReadRequest** out)
 {
-    std::unique_ptr<ScoreDiagReadRequest> request;
+    if (reader == nullptr || completion == nullptr || out == nullptr)
+    {
+        return SCORE_DIAG_INVALID_ARGUMENT;
+    }
+    *out = nullptr;
     try
     {
-        if (reader->state->active_requests.fetch_add(1U) >= 8U)
+        auto request = StartRead(*reader, context, completion);
+        if (!request.has_value())
         {
-            score::cpp::ignore = reader->state->active_requests.fetch_sub(1U);
-            completion(context, SCORE_DIAG_READ_BUSY, 0U, nullptr, 0U);
-            return nullptr;
+            return ToStatus(request.error());
         }
-        Admission admission{reader->state};
-        auto state = std::make_shared<RequestState>();
-        state->owner = reader->state;
-        state->context = context;
-        state->completion = completion;
-        request = std::make_unique<ScoreDiagReadRequest>(ScoreDiagReadRequest{state});
-        std::thread([state, admission = std::move(admission)]() mutable {
-            CompleteRead(state, admission);
-        }).detach();
-        return request.release();
+        *out = request.value();
+        return SCORE_DIAG_OK;
+    }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "read start threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
     }
     catch (...)
     {
-        completion(context, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
-        return nullptr;
+        BridgeLogger().LogError() << "read start threw an unknown exception";
+        return SCORE_DIAG_FAILED;
     }
 }
 

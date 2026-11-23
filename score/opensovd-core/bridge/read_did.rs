@@ -57,16 +57,38 @@ impl ReadStatus {
 
 type ReadCompletion = unsafe extern "C" fn(*mut c_void, u8, u8, *const u8, usize);
 
+/// Outcome of a bridge call, mirroring `ScoreDiagStatus` in read_did.h. Anything but `Ok` leaves the
+/// out-parameter null.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CallStatus {
+    Ok,
+    InvalidArgument,
+    Busy,
+    Failed,
+}
+
+impl CallStatus {
+    fn from_raw(raw: u8) -> Self {
+        match raw {
+            0 => Self::Ok,
+            1 => Self::InvalidArgument,
+            2 => Self::Busy,
+            _ => Self::Failed,
+        }
+    }
+}
+
 unsafe extern "C" {
-    fn score_diag_demo_reader_create(delay_ms: u32, nrc: u8) -> *mut ScoreDiagReader;
+    fn score_diag_demo_reader_create(delay_ms: u32, nrc: u8, out: *mut *mut ScoreDiagReader) -> u8;
     #[cfg(test)]
-    fn score_diag_reader_clone(reader: *const ScoreDiagReader) -> *mut ScoreDiagReader;
+    fn score_diag_reader_clone(reader: *const ScoreDiagReader, out: *mut *mut ScoreDiagReader) -> u8;
     fn score_diag_reader_release(reader: *mut ScoreDiagReader);
     fn score_diag_read_start(
         reader: *mut ScoreDiagReader,
         context: *mut c_void,
         completion: ReadCompletion,
-    ) -> *mut ScoreDiagReadRequest;
+        out: *mut *mut ScoreDiagReadRequest,
+    ) -> u8;
     fn score_diag_read_cancel(request: *mut ScoreDiagReadRequest);
     fn score_diag_read_release(request: *mut ScoreDiagReadRequest);
 }
@@ -98,6 +120,7 @@ impl fmt::Display for ReadError {
     }
 }
 
+// # req-Id: comp_req__uds_data_bridge__nrc_errors
 impl From<ReadError> for DataError {
     /// Core's `DataError` has no variants for access denied, conflict, busy or timeout, so only
     /// requestOutOfRange gets a distinct status (404). Everything else stays Internal (HTTP 500) until
@@ -130,6 +153,7 @@ struct Request(NonNull<ScoreDiagReadRequest>);
 // SAFETY: a request has a single owner; cancel and release are never called concurrently.
 unsafe impl Send for Request {}
 
+// # req-Id: comp_req__uds_data_bridge__read_timeout
 impl Drop for Request {
     fn drop(&mut self) {
         unsafe {
@@ -161,7 +185,11 @@ pub struct ReadDid {
 
 impl ReadDid {
     pub fn demo(delay_ms: u32, nrc: u8, timeout: Duration) -> Result<Self, DataError> {
-        unsafe { Self::from_registration(score_diag_demo_reader_create(delay_ms, nrc), timeout) }
+        let mut handle = std::ptr::null_mut();
+        match CallStatus::from_raw(unsafe { score_diag_demo_reader_create(delay_ms, nrc, &mut handle) }) {
+            CallStatus::Ok => unsafe { Self::from_registration(handle, timeout) },
+            status => Err(DataError::Internal(format!("could not register C++ handler: {status:?}"))),
+        }
     }
 
     /// Takes ownership of a registration returned by the C++ bridge.
@@ -178,17 +206,35 @@ impl ReadDid {
     }
 
     /// Reads the raw DID payload.
+    // # req-Id: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__non_blocking_reads, comp_req__uds_data_bridge__read_timeout
     pub async fn read_bytes(&self) -> Result<Vec<u8>, ReadError> {
         let (sender, receiver) = oneshot::channel::<Reply>();
-        let context = Box::into_raw(Box::new(sender)).cast();
-        let request = unsafe { score_diag_read_start(self.handler.0.as_ptr(), context, complete) };
-        let request = NonNull::new(request).map(Request);
+        let request = self.start(sender)?;
         let result = tokio::time::timeout(self.timeout, receiver)
             .await
             .map_err(|_| ReadError::Timeout)?
             .map_err(|_| ReadError::Failed)?;
         drop(request);
         result
+    }
+
+    /// Starts a read whose completion sends the reply on `sender`. The raw request pointer stays here,
+    /// so the async caller only holds the owned `Request`.
+    // # req-Id: comp_req__uds_data_bridge__read_admission
+    fn start(&self, sender: oneshot::Sender<Reply>) -> Result<Request, ReadError> {
+        let context: *mut c_void = Box::into_raw(Box::new(sender)).cast();
+        let mut request = std::ptr::null_mut();
+        let status =
+            CallStatus::from_raw(unsafe { score_diag_read_start(self.handler.0.as_ptr(), context, complete, &mut request) });
+        if status != CallStatus::Ok {
+            // The completion is not called when the read does not start, so the sender is reclaimed here.
+            drop(unsafe { Box::from_raw(context.cast::<oneshot::Sender<Reply>>()) });
+            return Err(match status {
+                CallStatus::Busy => ReadError::Busy,
+                _ => ReadError::Failed,
+            });
+        }
+        NonNull::new(request).map(Request).ok_or(ReadError::Failed)
     }
 }
 
@@ -199,6 +245,7 @@ pub struct Utf8(pub ReadDid);
 impl ReadableDataResource for Utf8 {
     type Value = Value<String>;
 
+    // # req-Id: comp_req__uds_data_bridge__utf8_data
     async fn read(&self) -> Result<Self::Value, DataError> {
         utf8_value(self.0.read_bytes().await?)
     }
@@ -222,7 +269,7 @@ pub(crate) mod test_support {
 
     unsafe extern "C" {
         fn score_diag_test_control_create() -> *mut ScoreDiagTestControl;
-        fn score_diag_test_control_register(control: *const ScoreDiagTestControl) -> *mut ScoreDiagReader;
+        fn score_diag_test_control_register(control: *const ScoreDiagTestControl, out: *mut *mut ScoreDiagReader) -> u8;
         fn score_diag_test_control_started(control: *const ScoreDiagTestControl) -> usize;
         fn score_diag_test_control_stopped(control: *const ScoreDiagTestControl) -> usize;
         fn score_diag_test_control_complete(control: *mut ScoreDiagTestControl);
@@ -248,8 +295,10 @@ pub(crate) mod test_support {
         }
 
         pub fn reader(&self, timeout: Duration) -> ReadDid {
-            unsafe { ReadDid::from_registration(score_diag_test_control_register(self.0.as_ptr()), timeout) }
-                .expect("controlled reader")
+            let mut handle = std::ptr::null_mut();
+            let status = CallStatus::from_raw(unsafe { score_diag_test_control_register(self.0.as_ptr(), &mut handle) });
+            assert_eq!(status, CallStatus::Ok, "register controlled reader");
+            unsafe { ReadDid::from_registration(handle, timeout) }.expect("controlled reader")
         }
 
         pub fn started(&self) -> usize {
@@ -295,6 +344,7 @@ mod tests {
         assert_eq!(std::mem::size_of::<ReadStatus>(), 1);
     }
 
+    // # verifies: comp_req__uds_data_bridge__nrc_errors
     #[test]
     fn read_errors_keep_nrc_and_map_out_of_range_to_not_found() {
         assert!(matches!(DataError::from(ReadError::Nrc(0x31)), DataError::NotFound(m) if m == "UDS NRC 0x31"));
@@ -304,15 +354,18 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn accepts_owned_registration_after_original_handle_is_released() {
-        let original = unsafe { score_diag_demo_reader_create(0, 0) };
+        let mut original = std::ptr::null_mut();
+        assert_eq!(CallStatus::from_raw(unsafe { score_diag_demo_reader_create(0, 0, &mut original) }), CallStatus::Ok);
         assert!(!original.is_null());
-        let cloned = unsafe { score_diag_reader_clone(original) };
+        let mut cloned = std::ptr::null_mut();
+        assert_eq!(CallStatus::from_raw(unsafe { score_diag_reader_clone(original, &mut cloned) }), CallStatus::Ok);
         unsafe { score_diag_reader_release(original) };
         let reader = unsafe { ReadDid::from_registration(cloned, Duration::from_secs(5)) }.expect("registration");
         assert_eq!(reader.read_bytes().await.expect("read"), b"1.0.0");
         assert!(unsafe { ReadDid::from_registration(std::ptr::null_mut(), Duration::from_secs(1)) }.is_err());
     }
 
+    // # verifies: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__nrc_errors
     #[tokio::test(flavor = "current_thread")]
     async fn cpp_handler_returns_bytes_and_nrc() {
         let reader = ReadDid::demo(0, 0, Duration::from_secs(5)).expect("reader");
@@ -321,17 +374,20 @@ mod tests {
         assert_eq!(denied.read_bytes().await, Err(ReadError::Nrc(0x33)));
     }
 
+    // # verifies: comp_req__uds_data_bridge__utf8_data
     #[tokio::test(flavor = "current_thread")]
     async fn utf8_payload_renders_as_string() {
         let reader = ReadDid::demo(0, 0, Duration::from_secs(5)).expect("reader");
         assert_eq!(Utf8(reader).read().await.expect("utf8").value, "1.0.0");
     }
 
+    // # verifies: comp_req__uds_data_bridge__utf8_data
     #[test]
     fn non_utf8_payload_is_an_error() {
         assert!(matches!(utf8_value(vec![0xff, 0xfe]), Err(DataError::Internal(_))));
     }
 
+    // # verifies: comp_req__uds_data_bridge__non_blocking_reads
     #[tokio::test(flavor = "current_thread")]
     async fn pending_read_does_not_block_runtime() {
         let control = Control::new();
@@ -345,6 +401,7 @@ mod tests {
         assert_eq!(task.await.expect("task").expect("pending read"), b"ok");
     }
 
+    // # verifies: comp_req__uds_data_bridge__read_timeout
     #[tokio::test(flavor = "current_thread")]
     async fn timeout_and_dropped_read_cancel_safely() {
         let control = Control::new();
@@ -361,6 +418,7 @@ mod tests {
         assert_eq!(quick.read_bytes().await.expect("subsequent read"), b"1.0.0");
     }
 
+    // # verifies: comp_req__uds_data_bridge__read_admission
     #[tokio::test(flavor = "current_thread")]
     async fn saturated_handler_rejects_additional_work() {
         let control = Control::new();

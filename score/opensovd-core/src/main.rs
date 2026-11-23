@@ -33,6 +33,7 @@ fn init_tracing() {
     tracing_subscriber::fmt().with_env_filter(filter).init();
 }
 
+// # req-Id: comp_req__sovd_gateway__hosted_entities, comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__utf8_data
 async fn topology() -> Result<Topology, Box<dyn std::error::Error>> {
     let provider = DataProviderBuilder::new()
         .read_data(
@@ -124,6 +125,7 @@ mod tests {
         (task, client)
     }
 
+    // # verifies: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__utf8_data, comp_req__sovd_gateway__hosted_entities
     #[tokio::test(flavor = "current_thread")]
     async fn registered_application_is_discoverable_and_serves_data() {
         let (task, client) = serve(&[]).await;
@@ -170,6 +172,7 @@ mod tests {
         })
     }
 
+    // # verifies: comp_req__sovd_gateway__upstream_config
     #[tokio::test(flavor = "current_thread")]
     async fn upstream_entities_are_listed_over_a_unix_socket() {
         let dir = std::env::temp_dir().join(format!("score-gateway-test-{}", std::process::id()));
@@ -192,6 +195,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    // # verifies: comp_req__sovd_gateway__upstream_unavailable
     #[tokio::test(flavor = "current_thread")]
     async fn unreachable_upstream_keeps_local_entities_available() {
         let unused = std::net::TcpListener::bind("127.0.0.1:0").expect("port");
