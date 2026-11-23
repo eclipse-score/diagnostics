@@ -94,6 +94,17 @@ def browse(host: str, gateway_pid: int) -> None:
                 )
                 response = connection.getresponse()
                 body = response.read()
+                assert response.status == 401, (response.status, body)
+                connection.request(
+                    "GET",
+                    f"{url.path}/version-info",
+                    headers={
+                        "Host": url.netloc,
+                        "Authorization": f"Bearer {os.environ['SOVD_AUTH_TOKEN']}",
+                    },
+                )
+                response = connection.getresponse()
+                body = response.read()
                 assert response.status == 200, (response.status, body)
                 version_info = cast(VersionInfo, json.loads(body))
                 assert version_info["sovd_info"], body

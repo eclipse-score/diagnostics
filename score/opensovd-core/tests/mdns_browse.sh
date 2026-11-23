@@ -30,6 +30,7 @@ suffix="$$-${RANDOM}"
 server="mdns-server-${suffix}"
 client="mdns-client-${suffix}"
 host="score-test-${suffix}"
+test_token="mdns-test-token"
 log="${TEST_TMPDIR:?}/gateway.log"
 gateway_pid=""
 
@@ -70,10 +71,11 @@ ip netns exec "$server" env \
     SOVD_MDNS_HOST="$host" \
     SOVD_MDNS_INTERFACE=eth0 \
     SOVD_UPSTREAM_URL= \
+    SOVD_AUTH_TOKEN="$test_token" \
     "$gateway" >"$log" 2>&1 &
 gateway_pid=$!
 
-timeout 45s ip netns exec "$client" "$browser" \
+timeout 45s ip netns exec "$client" env SOVD_AUTH_TOKEN="$test_token" "$browser" \
     --host "$host" --gateway-pid "$gateway_pid"
 wait "$gateway_pid"
 gateway_pid=""
