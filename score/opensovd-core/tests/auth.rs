@@ -52,6 +52,14 @@ async fn request(address: SocketAddr, authorization: Option<&str>) -> String {
 
 #[tokio::test(flavor = "current_thread")]
 async fn authentication_precedes_forwarding() {
+    let dir = std::env::var_os("TEST_TMPDIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join(format!("gateway-jwt-forwarding-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("test directory");
+    let _dir = TempDir(dir.clone());
+    let jwks = dir.join("jwks.json");
+    std::fs::write(&jwks, TEST_JWKS).expect("JWKS");
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("upstream listener");
@@ -96,16 +104,19 @@ async fn authentication_precedes_forwarding() {
             &url,
             "--upstream-url",
             &upstream,
+            "--auth-jwks",
+            jwks.to_str().expect("JWKS path"),
+            "--auth-issuer",
+            "test-issuer",
         ])
         .expect("options");
-        let auth = auth::configured(&options, Some("test-token".into()))
+        assert!(auth::configured(&options, None)
             .expect("configuration")
-            .expect("static auth");
+            .is_none());
         drop(reservation);
-        let task = TaskGuard(tokio::spawn(opensovd_gateway::run_with_auth_and_shutdown(
+        let task = TaskGuard(tokio::spawn(opensovd_gateway::run_with_shutdown(
             options,
             Topology::default(),
-            auth,
             std::future::pending(),
         )));
         for _ in 0..100 {
@@ -131,7 +142,7 @@ async fn authentication_precedes_forwarding() {
     assert!(invalid.starts_with("HTTP/1.1 401"), "{invalid}");
     assert!(requests.lock().expect("requests").is_empty());
 
-    let accepted = request(address, Some("Bearer test-token")).await;
+    let accepted = request(address, Some(&format!("Bearer {TEST_JWT}"))).await;
     assert!(accepted.starts_with("HTTP/1.1 200"), "{accepted}");
     assert!(accepted.ends_with("ok"), "{accepted}");
     let requests = requests.lock().expect("requests");
@@ -141,11 +152,24 @@ async fn authentication_precedes_forwarding() {
         "{}",
         requests[0]
     );
+    assert!(requests[0].lines().any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case("authorization")
+                && value.trim() == format!("Bearer {TEST_JWT}")
+        })
+    }));
 }
 
 // Test-only Ed25519 public key and JWT, signed for test-issuer and expiring in 2100.
 const TEST_JWKS: &str = r#"{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"test","alg":"EdDSA","x":"IoVG8onMfMsFo4z8KXavXa1EWf2IhAGV1INRF37YjpA"}]}"#;
 const TEST_JWT: &str = "eyJhbGciOiJFZERTQSIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJpbnRlZ3JhdGlvbi10ZXN0IiwiaXNzIjoidGVzdC1pc3N1ZXIiLCJleHAiOjQxMDI0NDQ4MDB9.ImTw3cMdfuL2S4qUF9vA_ncYzNAdY6Y_24Qkp7oz1Lb55uW9Kl0c6uAVfIPybjEiOoojO08NtzaiBnZNbLJ1AA";
+
+struct TempDir(std::path::PathBuf);
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
 
 #[tokio::test(flavor = "current_thread")]
 async fn jwt_and_permissive_rego_require_a_principal_before_forwarding() {
@@ -154,12 +178,6 @@ async fn jwt_and_permissive_rego_require_a_principal_before_forwarding() {
         .unwrap_or_else(std::env::temp_dir)
         .join(format!("gateway-jwt-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("test directory");
-    struct TempDir(std::path::PathBuf);
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
     let _dir = TempDir(dir.clone());
     let jwks = dir.join("jwks.json");
     let policy = dir.join("allow.rego");
@@ -247,4 +265,16 @@ fn missing_or_empty_configuration_is_rejected() {
     assert!(auth::configured(&options, Some(" ".into())).is_err());
     assert!(auth::configured(&options, Some("a=b".into())).is_err());
     assert!(auth::configured(&options, Some("==".into())).is_err());
+    assert!(auth::configured(&options, Some("test-token".into()))
+        .expect("static auth")
+        .is_some());
+    let jwt_options = opensovd_gateway::cli::try_parse_from([
+        "gateway",
+        "--auth-jwks",
+        "jwks.json",
+        "--auth-issuer",
+        "test-issuer",
+    ])
+    .expect("JWT options");
+    assert!(auth::configured(&jwt_options, Some("test-token".into())).is_err());
 }
