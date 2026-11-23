@@ -24,7 +24,9 @@ it takes the options and `SOVD_*` environment variables of the reference gateway
 |---|---|---|---|
 | `SOVD_URL` | `--url` | Address, port and base path to serve on | `http://localhost:7690/sovd` |
 | `SOVD_UPSTREAM_URL` | `--upstream-url` | The CDA to forward what the gateway does not host to: `http://<host>:<port>[<base path>]`, e.g. `http://127.0.0.1:20002/vehicle/v15`, or a Unix domain socket `unix:<socket>[:<base path>]`, e.g. `unix:///run/cda.sock:/vehicle/v15` | no forwarding |
-| `SOVD_AUTH_TOKEN` | — | Static bearer token; alternatively configure Core's `--auth-jwks` and `--auth-issuer` | required unless JWT is configured |
+| `SOVD_AUTH_JWKS` | `--auth-jwks` | File containing the issuer's public verification keys in JWKS format | required with issuer for production |
+| `SOVD_AUTH_ISSUER` | `--auth-issuer` | Expected issuer of the client tokens | required with JWKS for production |
+| `SOVD_AUTH_TOKEN` | — | Static bearer token for development and tests only | unset |
 | `SOVD_MDNS` | `--mdns` | Announce the gateway via mDNS/DNS-SD with this vehicle identification, e.g. the VIN | no announcement |
 | `SOVD_MDNS_HOST` | `--mdns-host` | Host label of the announcement, published as `<host>.local` | derived from the identification |
 | `SOVD_MDNS_INTERFACE` | `--mdns-interface` | Comma separated interfaces to announce on, for an unspecified address | all non-loopback interfaces |
@@ -32,6 +34,22 @@ it takes the options and `SOVD_*` environment variables of the reference gateway
 With an upstream, the federation of opensovd-core lists the entities of the CDA next to the
 gateway's own and forwards to it, over TCP or a Unix domain socket. Authentication, TLS and CORS
 are those of opensovd-core as well.
+
+## Authentication
+
+For production, configure `--auth-jwks` and `--auth-issuer`. The JWKS contains public keys;
+the gateway does not need the issuer's signing key. Clients obtain tokens from an external issuer
+and send them as `Authorization: Bearer <token>`. The gateway authenticates requests before
+forwarding and forwards the authorization header to the CDA.
+
+```sh
+opensovd-gateway --auth-jwks /etc/sovd/issuer-jwks.json --auth-issuer https://issuer.example
+```
+
+For development and tests only, `SOVD_AUTH_TOKEN` configures a static bearer token instead.
+It cannot be combined with JWKS. The gateway refuses to start without authentication configured.
+The example client also reads `SOVD_AUTH_TOKEN`, but there it is the client credential, not a
+gateway setting. For JWT authentication, set it to a token from the external issuer.
 
 ## mDNS/DNS-SD
 

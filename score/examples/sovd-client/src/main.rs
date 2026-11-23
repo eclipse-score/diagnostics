@@ -202,6 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .or_else(|| std::env::var("SOVD_BASE_URL").ok())
         .unwrap_or_else(|| DEFAULT_URL.to_owned());
+    // This is the client's bearer credential, not the gateway's verification key.
     let token = std::env::var("SOVD_AUTH_TOKEN").ok();
     let client = connect(&url, token.as_deref())?;
     run(&client).await?;
