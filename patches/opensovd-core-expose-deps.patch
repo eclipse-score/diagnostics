@@ -2,7 +2,7 @@ diff --git a/BUILD.bazel b/BUILD.bazel
 index 4eba4cd..91c110e 100644
 --- a/BUILD.bazel
 +++ b/BUILD.bazel
-@@ -48,3 +48,73 @@ alias(
+@@ -48,3 +48,78 @@ alias(
      name = "opensovd-mdns",
      actual = "//opensovd-extra:opensovd_extra_mdns",
  )
@@ -76,3 +76,50 @@ index 4eba4cd..91c110e 100644
 +    name = "tower",
 +    actual = "@crate_index//:tower",
 +)
++
++alias(
++    name = "aws-lc-rs",
++    actual = "@crate_index//:aws-lc-rs",
++)
+diff --git a/opensovd-cli/gateway/src/lib.rs b/opensovd-cli/gateway/src/lib.rs
+--- a/opensovd-cli/gateway/src/lib.rs
++++ b/opensovd-cli/gateway/src/lib.rs
+@@ -96,3 +96,24 @@
++/// Runs the embedded gateway with application-supplied auth and signal handling.
++pub async fn run_with_auth(cli: cli::Cli, topology: Topology, auth: Auth) -> anyhow::Result<()> {
++    run_with_auth_and_shutdown(cli, topology, auth, libcli::shutdown_signal()).await
++}
++
++/// Runs the embedded gateway with supplied auth until `shutdown` resolves.
++pub async fn run_with_auth_and_shutdown(
++    cli: cli::Cli,
++    topology: Topology,
++    auth: Auth,
++    shutdown: impl Future<Output = ()> + Send + 'static,
++) -> anyhow::Result<()> {
++    #[cfg(feature = "mock")]
++    anyhow::ensure!(!cli.mock, "--mock cannot be used with a supplied topology");
++    anyhow::ensure!(
++        cli.auth.jwks.is_none(),
++        "supplied auth cannot be combined with --auth-jwks"
++    );
++    serve(cli, Some(auth), topology, shutdown).await
++}
++
+ async fn run_gateway(
+     mut cli: cli::Cli,
+     topology: Topology,
+@@ -120,1 +141,1 @@ fn create_auth(args: &mut cli::AuthArgs) -> anyhow::Result<Option<Auth>> {
+-        Auth::new(jwt, create_rego_authorizer(args)?)
++        Auth::new(jwt, RequireAuthenticated(create_rego_authorizer(args)?))
+@@ -124,2 +145,10 @@
++struct RequireAuthenticated<A>(A);
++
++impl<A: opensovd_server::Authorizer> opensovd_server::Authorizer for RequireAuthenticated<A> {
++    fn authorize(&self, access: &opensovd_server::Access<'_>) -> bool {
++        access.principal.is_some() && self.0.authorize(access)
++    }
++}
++
+ fn create_jwt_authenticator(
+     jwks: &Path,
