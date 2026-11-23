@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // *******************************************************************************
 
-use opensovd_client::Client;
+use opensovd_client::{Client, VendorInfo};
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -78,9 +78,11 @@ fn runfile(path: &str) -> PathBuf {
 }
 
 fn write_config(path: &Path, database: &Path, storage: &Path, socket: &Path) {
+    // Keep diagnostic communication disabled: discovery here only needs the loaded databases.
     let config = format!(
         "[database]\ndir = {:?}\nexit_no_database_loaded = true\n\n\
          [doip]\ntester_address = \"127.0.0.1\"\n\n\
+         [communication]\ninit_mode = \"Disabled\"\n\n\
          [runtime_update_config]\nstorage_dir = {:?}\n\n\
          [server]\ntransport = \"unix_socket\"\nunix_socket = {:?}\n",
         database.display().to_string(),
@@ -171,10 +173,10 @@ async fn start_cda(binary: &Path, config: &Path, socket: &Path) -> Option<(Child
             return None;
         }
         match client.list_components().send().await {
-            Ok(components) => {
-                assert!(components.items.is_empty());
+            Ok(components) if components.items.iter().any(|ecu| ecu.id == "flxc1000") => {
                 return Some((child, client));
-            },
+            }
+            Ok(_) => last_error = Some("fixture ECU not yet listed".into()),
             Err(error) => last_error = Some(error.to_string()),
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -191,6 +193,9 @@ async fn cda_serves_version_and_components() {
     let database = temp.0.join("database");
     fs::create_dir_all(&database).expect("create database directory");
     fs::copy(&mdd, database.join("functional_groups.mdd")).expect("copy MDD fixture");
+    // CDA lists loaded ECUs even when they are offline; no simulator or bus request is needed.
+    let ecu_mdd = runfile("classic-diagnostic-adapter+/testcontainer/odx/FLXC1000.mdd");
+    fs::copy(ecu_mdd, database.join("FLXC1000.mdd")).expect("copy ECU MDD fixture");
     let config = temp.0.join("cda.toml");
     let storage = temp.0.join("storage");
     fs::create_dir_all(&storage).expect("create storage directory");
@@ -201,6 +206,25 @@ async fn cda_serves_version_and_components() {
     let upstream = format!("unix:{}:/vehicle/v15", socket.0.display());
 
     assert!(child.0.try_wait().expect("check CDA process").is_none());
+    // CDA's unversioned root is not forwarded by the versioned upstream proxy.
+    let cda_versions = Client::builder()
+        .base_uri("http://localhost")
+        .expect("CDA discovery URL")
+        .unix_socket(&socket.0)
+        .timeout(Duration::from_secs(5))
+        .discovery()
+        .expect("CDA discovery client")
+        .versions::<VendorInfo>()
+        .await
+        .expect("read CDA version-info");
+    assert!(
+        cda_versions.iter().any(|version| version.version == "1.1.0"
+            && version.base_uri.0 == "/vehicle/v15"
+            && version.vendor_info.as_ref().is_some_and(|vendor| {
+                vendor.name == "Eclipse OpenSOVD Classic Diagnostic Adapter" && !vendor.version.is_empty()
+            })),
+        "CDA version-info: {cda_versions:?}"
+    );
     let apps = client.list_apps().send().await.expect("discover CDA apps");
     assert!(apps.items.iter().any(|app| app.id == "sovd2uds"));
     let network = client
@@ -230,7 +254,83 @@ async fn cda_serves_version_and_components() {
             break;
         }
     }
-    let (mut gateway, gateway_client, gateway_url) = started.expect("gateway did not start on any free port");
+    let (mut gateway, _startup_client, gateway_url) = started.expect("gateway did not start on any free port");
+    let gateway_root = gateway_url.strip_suffix("/v1").expect("gateway versioned URL");
+    let gateway_discovery = Client::builder()
+        .base_uri(gateway_root)
+        .expect("gateway discovery URL")
+        .timeout(Duration::from_secs(5))
+        .layer(tower::util::MapRequestLayer::new(|mut request: http::Request<_>| {
+            request.headers_mut().insert(
+                http::header::AUTHORIZATION,
+                http::HeaderValue::from_str(&format!("Bearer {TEST_TOKEN}")).expect("test token header"),
+            );
+            request
+        }))
+        .discovery()
+        .expect("gateway discovery client");
+    let gateway_versions = gateway_discovery
+        .versions::<VendorInfo>()
+        .await
+        .expect("read gateway version-info");
+    assert!(
+        gateway_versions
+            .iter()
+            .any(|version| { version.version == "1.1.0" && version.base_uri.0 == gateway_url }),
+        "gateway version-info: {gateway_versions:?}"
+    );
+    let gateway_client = gateway_discovery
+        .select::<VendorInfo>(|version| version.version == "1.1.0" && version.base_uri.0 == gateway_url)
+        .await
+        .expect("select the gateway's advertised version");
+
+    let anonymous = Client::builder()
+        .base_uri(&gateway_url)
+        .expect("gateway URL")
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("anonymous client");
+    let error = anonymous
+        .list_components()
+        .send()
+        .await
+        .expect_err("anonymous request must fail");
+    assert!(
+        matches!(error, opensovd_client::Error::ApiError { status, .. } if status == http::StatusCode::UNAUTHORIZED),
+        "expected 401: {error:?}"
+    );
+
+    let cda_ecus = client.list_components().send().await.expect("list CDA ECUs");
+    let gateway_ecus = gateway_client
+        .list_components()
+        .send()
+        .await
+        .expect("list ECUs through gateway");
+    assert!(
+        cda_ecus.items.iter().any(|ecu| ecu.id == "flxc1000"),
+        "fixture ECU missing: {cda_ecus:?}"
+    );
+    for ecu in &cda_ecus.items {
+        let forwarded = gateway_ecus
+            .items
+            .iter()
+            .find(|item| item.id == ecu.id)
+            .unwrap_or_else(|| panic!("CDA ECU {} missing through gateway: {gateway_ecus:?}", ecu.id));
+        let href = &forwarded.href.0;
+        let path = href
+            .strip_prefix(&gateway_url)
+            .unwrap_or_else(|| panic!("ECU href does not point through gateway: {href}"));
+        assert!(path.starts_with("/components/"), "unexpected ECU href: {href}");
+        let actual: serde_json::Value = gateway_client
+            .get(path, &[])
+            .await
+            .expect("resolve ECU href through gateway");
+        assert_eq!(
+            actual["id"].as_str(),
+            Some(ecu.id.as_str()),
+            "ECU href returned wrong resource: {actual}"
+        );
+    }
     let apps = gateway_client
         .list_apps()
         .send()

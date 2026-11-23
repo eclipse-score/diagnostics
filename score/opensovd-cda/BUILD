@@ -38,6 +38,7 @@ _INTEGRATION_DATA = [
     ":opensovd-cda",
     "//score/examples/sovd-client",
     "//score/opensovd-core:opensovd-gateway",
+    "@classic-diagnostic-adapter//testcontainer/odx:mdd",
 ]
 
 rust_test(
@@ -48,6 +49,7 @@ rust_test(
     deps = [
         "@opensovd_core//:http",
         "@opensovd_core//:opensovd-client",
+        "@opensovd_core//:serde_json",
         "@opensovd_core//:tokio",
         "@opensovd_core//:tower",
     ],
