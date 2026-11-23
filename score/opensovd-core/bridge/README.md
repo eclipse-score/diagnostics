@@ -55,19 +55,20 @@ unreachable upstream.
 
 ## Local Walkthrough
 
-Start the gateway in one terminal (loopback only, no production authorization). With `SOVD_UPSTREAM_URL` it
+Start the gateway in one terminal with a test-only bearer token (loopback only, no production authorization).
+With `SOVD_UPSTREAM_URL` it
 forwards everything it does not host, for example to a CDA, and lists the CDA's entities next to its own:
 
 ```sh
-SOVD_UPSTREAM_URL=http://127.0.0.1:20002/vehicle/v15 \
+SOVD_AUTH_TOKEN=development-token SOVD_UPSTREAM_URL=http://127.0.0.1:20002/vehicle/v15 \
   bazel run --config=score_diag_x86_64_linux //score/opensovd-core:opensovd-gateway
 ```
 
 Query it from another terminal:
 
 ```sh
-curl --fail http://127.0.0.1:7690/sovd/v1/apps
-curl --fail http://127.0.0.1:7690/sovd/v1/apps/score-diagnostics/data/application.version
+curl --fail -H 'Authorization: Bearer development-token' http://127.0.0.1:7690/sovd/v1/apps
+curl --fail -H 'Authorization: Bearer development-token' http://127.0.0.1:7690/sovd/v1/apps/score-diagnostics/data/application.version
 ```
 
 The version read contains `data.value: "1.0.0"`. `//score/opensovd-cda:integration_test` starts a CDA and the
