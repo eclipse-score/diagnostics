@@ -65,11 +65,11 @@ for namespace in "$server" "$client"; do
 done
 
 ip netns exec "$server" env \
-    SCORE_GATEWAY_ADDRESS=0.0.0.0:7690 \
-    SCORE_GATEWAY_MDNS="$host" \
-    SCORE_GATEWAY_MDNS_HOST="$host" \
-    SCORE_GATEWAY_MDNS_INTERFACE=eth0 \
-    SCORE_UPSTREAM_URL= \
+    SOVD_URL=http://0.0.0.0:7690/sovd \
+    SOVD_MDNS="$host" \
+    SOVD_MDNS_HOST="$host" \
+    SOVD_MDNS_INTERFACE=eth0 \
+    SOVD_UPSTREAM_URL= \
     "$gateway" >"$log" 2>&1 &
 gateway_pid=$!
 
