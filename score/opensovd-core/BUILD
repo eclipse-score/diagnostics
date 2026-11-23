@@ -96,9 +96,9 @@ rust_test(
     name = "gateway_auth_test",
     srcs = [
         "src/auth.rs",
-        "tests/auth.rs",
+        "//score/opensovd-core/tests:auth.rs",
     ],
-    crate_root = "tests/auth.rs",
+    crate_root = "//score/opensovd-core/tests:auth.rs",
     edition = "2021",
     deps = [
         "@opensovd_core//:aws-lc-rs",
