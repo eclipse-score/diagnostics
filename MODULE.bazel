@@ -15,7 +15,7 @@ module(name = "score_diagnostics")
 bazel_dep(name = "classic-diagnostic-adapter", version = "0.1.0")
 git_override(
     module_name = "classic-diagnostic-adapter",
-    commit = "4c443a0f8849e61a374a45a312328d5408d7efe5",
+    commit = "f613cde67473d6746725edc9cbf8f64179a74f6a",
     patch_strip = 1,
     patches = [
         "//patches:classic-diagnostic-adapter-export-requirements.patch",
@@ -39,12 +39,10 @@ bazel_dep(name = "rules_foreign_cc", version = "0.17.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "opensovd_core", version = "0.0.0")
 
-# TODO: back to feat/score-integration once eclipse-opensovd/opensovd-core#280 is merged. This is
-# the head of #280: feat/score-integration (with the embeddable gateway runner of #282) plus the
-# public mDNS target //:opensovd-mdns.
+# feat/score-integration includes the embeddable gateway runner and public mDNS target.
 git_override(
     module_name = "opensovd_core",
-    commit = "815b6c155e21d06b0d98b3297854facf9cb7b541",
+    commit = "326be39a1102ae0533857543e70da074d7b5ba62",
     patch_strip = 1,
     patches = [
         "//patches:opensovd-core-expose-deps.patch",
