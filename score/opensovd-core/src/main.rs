@@ -97,6 +97,22 @@ mod tests {
     use super::*;
     use opensovd_client::Client;
 
+    // # verifies: comp_req__sovd_gateway__upstream_config
+    #[test]
+    fn upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls() {
+        let parse = |urls| {
+            opensovd_gateway::cli::try_parse_from(["opensovd-gateway", "--upstream-url", urls])
+                .expect("options")
+                .upstream
+                .config()
+        };
+        let config = parse("http://localhost:20002/vehicle/v15,unix:///run/cda.sock:/vehicle/v15")
+            .expect("mixed upstreams");
+        assert_eq!(config.upstreams.len(), 2);
+        assert!(parse("https://localhost:20002/vehicle/v15").is_err());
+        assert!(parse("unix:relative.sock").is_err());
+    }
+
     /// Runs the gateway on a free port of the loopback address with the extra `options`, such as
     /// `--upstream-url`, until the returned task is aborted.
     async fn serve(options: &[&str]) -> (tokio::task::JoinHandle<()>, Client) {
