@@ -19,8 +19,10 @@ rust_binary(
     edition = "2021",
     visibility = ["//score/opensovd-cda:__pkg__"],
     deps = [
+        "@opensovd_core//:http",
         "@opensovd_core//:opensovd-client",
         "@opensovd_core//:tokio",
+        "@opensovd_core//:tower",
         "@score_crate_index//:tracing",
         "@score_crate_index//:tracing-subscriber",
     ],
