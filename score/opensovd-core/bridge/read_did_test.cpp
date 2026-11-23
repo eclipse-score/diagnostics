@@ -16,9 +16,38 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <cstdlib>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <vector>
+
+// Allocations of the test thread fail while its flag is set, so that the C entry points reach their exception
+// paths. Other threads are not affected.
+thread_local bool g_fail_allocations = false;
+
+void* operator new(std::size_t size)
+{
+    if (g_fail_allocations)
+    {
+        throw std::bad_alloc{};
+    }
+    if (void* memory = std::malloc(size == 0U ? 1U : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc{};
+}
+
+void operator delete(void* memory) noexcept
+{
+    std::free(memory);
+}
+
+void operator delete(void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
 
 namespace
 {
@@ -336,5 +365,80 @@ TEST(ReadDidBridge, RegistrationsOfOneHandlerShareAdmission)
         EXPECT_EQ(reply->Status(), SCORE_DIAG_READ_CANCELLED);
     }
     EXPECT_EQ(handler->Invocations(), 1U);
+}
+
+TEST(ReadDidBridgeCAbi, AllocationFailureReturnsFailedStatusWithoutOutput)
+{
+    RecordProperty("Description",
+                   "Check that the C entry points return SCORE_DIAG_FAILED, and leave their out-parameter NULL, when "
+                   "an allocation fails inside them.");
+
+    ScoreDiagReader* created = nullptr;
+    g_fail_allocations = true;
+    const auto create_status = score_diag_demo_reader_create(0U, 0U, &created);
+    g_fail_allocations = false;
+    EXPECT_EQ(create_status, SCORE_DIAG_FAILED);
+    EXPECT_EQ(created, nullptr);
+
+    ScoreDiagReader* raw_reader = nullptr;
+    ASSERT_EQ(score_diag_demo_reader_create(0U, 0U, &raw_reader), SCORE_DIAG_OK);
+    ReaderHandle reader{raw_reader, score_diag_reader_release};
+
+    ScoreDiagReader* clone = nullptr;
+    g_fail_allocations = true;
+    const auto clone_status = score_diag_reader_clone(reader.get(), &clone);
+    g_fail_allocations = false;
+    EXPECT_EQ(clone_status, SCORE_DIAG_FAILED);
+    EXPECT_EQ(clone, nullptr);
+
+    // Allocated before the failure is armed, as the bridge does not take ownership of the context when it fails.
+    auto completion = std::make_shared<Completion>();
+    auto* context = new Pending{completion};
+    ScoreDiagReadRequest* request = nullptr;
+    g_fail_allocations = true;
+    const auto start_status = score_diag_read_start(reader.get(), context, Complete, &request);
+    g_fail_allocations = false;
+    EXPECT_EQ(start_status, SCORE_DIAG_FAILED);
+    EXPECT_EQ(request, nullptr);
+    delete context;
+}
+
+TEST(ReadDidBridgeCAbi, FailedReadStartDoesNotHoldAdmission)
+{
+    RecordProperty("Description",
+                   "Check that a read whose start fails on an allocation releases its admission slot, so that eight "
+                   "reads are still admitted afterwards.");
+
+    auto handler = std::make_shared<GatedReader>();
+    auto reader = Register(handler);
+    auto failed = std::make_shared<Completion>();
+    auto* context = new Pending{failed};
+    ScoreDiagReadRequest* request = nullptr;
+    g_fail_allocations = true;
+    const auto status = score_diag_read_start(reader.get(), context, Complete, &request);
+    g_fail_allocations = false;
+    EXPECT_EQ(status, SCORE_DIAG_FAILED);
+    delete context;
+
+    std::vector<Pending> replies;
+    std::vector<RequestHandle> requests;
+    for (std::size_t index = 0U; index < 8U; ++index)
+    {
+        replies.push_back(std::make_shared<Completion>());
+        requests.push_back(StartRead(reader.get(), replies.back()));
+        ASSERT_NE(requests.back().get(), nullptr);
+    }
+    ASSERT_TRUE(handler->WaitForInvocations(1U));
+    for (auto& admitted : requests)
+    {
+        score_diag_read_cancel(admitted.get());
+    }
+    handler->Open();
+    for (auto& reply : replies)
+    {
+        EXPECT_TRUE(reply->Wait());
+        EXPECT_EQ(reply->Status(), SCORE_DIAG_READ_CANCELLED);
+    }
+    EXPECT_EQ(failed->Count(), 0U);
 }
 }  // namespace

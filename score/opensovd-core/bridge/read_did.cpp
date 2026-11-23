@@ -342,15 +342,10 @@ extern "C" ScoreDiagStatus score_diag_demo_reader_create(std::uint32_t delay_ms,
         *out = reader.value();
         return SCORE_DIAG_OK;
     }
-    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
-    catch (const std::exception& ex)
-    {
-        BridgeLogger().LogError() << "reader registration threw: " << std::string_view{ex.what()};
-        return SCORE_DIAG_FAILED;
-    }
+    // C ABI boundary: an exception cannot cross it, so it is returned as a status. Nothing is logged here, as the
+    // logger allocates on first use and this may be the allocation-failure path.
     catch (...)
     {
-        BridgeLogger().LogError() << "reader registration threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
@@ -371,15 +366,10 @@ extern "C" ScoreDiagStatus score_diag_reader_clone(const ScoreDiagReader* reader
         *out = new ScoreDiagReader{reader->state};
         return SCORE_DIAG_OK;
     }
-    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
-    catch (const std::exception& ex)
-    {
-        BridgeLogger().LogError() << "reader clone threw: " << std::string_view{ex.what()};
-        return SCORE_DIAG_FAILED;
-    }
+    // C ABI boundary: an exception cannot cross it, so it is returned as a status. Nothing is logged here, as the
+    // logger allocates on first use and this may be the allocation-failure path.
     catch (...)
     {
-        BridgeLogger().LogError() << "reader clone threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
@@ -413,15 +403,10 @@ extern "C" ScoreDiagStatus score_diag_read_start(ScoreDiagReader* reader,
         *out = request.value();
         return SCORE_DIAG_OK;
     }
-    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
-    catch (const std::exception& ex)
-    {
-        BridgeLogger().LogError() << "read start threw: " << std::string_view{ex.what()};
-        return SCORE_DIAG_FAILED;
-    }
+    // C ABI boundary: an exception cannot cross it, so it is returned as a status. Nothing is logged here, as the
+    // logger allocates on first use and this may be the allocation-failure path.
     catch (...)
     {
-        BridgeLogger().LogError() << "read start threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
