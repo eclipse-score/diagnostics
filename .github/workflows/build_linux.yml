@@ -72,3 +72,9 @@ jobs:
           read -r -a targets <<< "${BAZEL_TEST_TARGETS}"
 
           bazel test --config=score_diag_x86_64_linux -- "${targets[@]}"
+
+      - name: Test gateway mDNS discovery and withdrawal
+        run: |
+          bazel test --config=score_diag_x86_64_linux \
+            --test_tag_filters= --cache_test_results=no \
+            //score/opensovd-core/tests:mdns_browse_test
