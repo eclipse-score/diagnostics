@@ -12,11 +12,14 @@
  ********************************************************************************/
 #include "score/opensovd-core/bridge/read_did.h"
 #include "score/mw/diag/uds/negative_response_code.h"
+#include "score/mw/log/logger.h"
 
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -123,6 +126,12 @@ ScoreDiagStatus ToStatus(const score::result::Error& error) noexcept
     return SCORE_DIAG_FAILED;
 }
 
+score::mw::log::Logger& BridgeLogger() noexcept
+{
+    static score::mw::log::Logger& logger = score::mw::log::CreateLogger("DIAG");
+    return logger;
+}
+
 class DemoReader final : public ReadDataByIdentifier
 {
   public:
@@ -225,9 +234,15 @@ void CompleteRead(const std::shared_ptr<RequestState>& state, Admission& admissi
                      bytes.size());
         }
     }
-    catch (...)
+    catch (const std::exception& ex)
     {
         // Detached worker: nothing above can catch. Handler code runs here, so a throw must become a failed read.
+        BridgeLogger().LogError() << "read handler threw: " << std::string_view{ex.what()};
+        Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
+    }
+    catch (...)
+    {
+        BridgeLogger().LogError() << "read handler threw an unknown exception";
         Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
     }
 }
@@ -304,8 +319,15 @@ extern "C" ScoreDiagStatus score_diag_demo_reader_create(std::uint32_t delay_ms,
         *out = reader.value();
         return SCORE_DIAG_OK;
     }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "reader registration threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
+    }
     catch (...)
     {
+        BridgeLogger().LogError() << "reader registration threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
@@ -322,8 +344,15 @@ extern "C" ScoreDiagStatus score_diag_reader_clone(const ScoreDiagReader* reader
         *out = new ScoreDiagReader{reader->state};
         return SCORE_DIAG_OK;
     }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "reader clone threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
+    }
     catch (...)
     {
+        BridgeLogger().LogError() << "reader clone threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
@@ -353,8 +382,15 @@ extern "C" ScoreDiagStatus score_diag_read_start(ScoreDiagReader* reader,
         *out = request.value();
         return SCORE_DIAG_OK;
     }
+    // C ABI boundary: an exception cannot cross it, so it is logged and returned as a status.
+    catch (const std::exception& ex)
+    {
+        BridgeLogger().LogError() << "read start threw: " << std::string_view{ex.what()};
+        return SCORE_DIAG_FAILED;
+    }
     catch (...)
     {
+        BridgeLogger().LogError() << "read start threw an unknown exception";
         return SCORE_DIAG_FAILED;
     }
 }
