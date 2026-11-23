@@ -94,6 +94,7 @@ fn write_config(path: &Path, database: &Path, storage: &Path, socket: &Path) {
 /// before the gateway binds it. Another process can take it in between; the gateway then exits during
 /// startup and is retried on a new port.
 const START_ATTEMPTS: usize = 5;
+const TEST_TOKEN: &str = "integration-test-token";
 
 fn free_port() -> u16 {
     std::net::TcpListener::bind("127.0.0.1:0")
@@ -109,6 +110,7 @@ async fn start_gateway(binary: &Path, upstream: &str) -> Option<(ChildGuard, Cli
         Command::new(binary)
             .env("SOVD_URL", format!("http://{address}/sovd"))
             .env("SOVD_UPSTREAM_URL", upstream)
+            .env("SOVD_AUTH_TOKEN", TEST_TOKEN)
             .stdout(Stdio::null())
             .stderr(Stdio::inherit())
             .spawn()
@@ -119,6 +121,13 @@ async fn start_gateway(binary: &Path, upstream: &str) -> Option<(ChildGuard, Cli
         .base_uri(&url)
         .expect("gateway URL")
         .timeout(Duration::from_secs(5))
+        .layer(tower::util::MapRequestLayer::new(|mut request: http::Request<_>| {
+            request.headers_mut().insert(
+                http::header::AUTHORIZATION,
+                http::HeaderValue::from_str(&format!("Bearer {TEST_TOKEN}")).expect("test token header"),
+            );
+            request
+        }))
         .build()
         .expect("gateway client");
     let mut last_error = None;
@@ -252,6 +261,7 @@ async fn cda_serves_version_and_components() {
     assert_eq!(local.data["value"].as_str(), Some("1.0.0"));
     let output = Command::new(&example)
         .arg(&gateway_url)
+        .env("SOVD_AUTH_TOKEN", TEST_TOKEN)
         .output()
         .expect("run example client against gateway");
     assert!(

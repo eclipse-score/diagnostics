@@ -46,8 +46,10 @@ rust_test(
     data = _INTEGRATION_DATA,
     tags = ["manual"],
     deps = [
+        "@opensovd_core//:http",
         "@opensovd_core//:opensovd-client",
         "@opensovd_core//:tokio",
+        "@opensovd_core//:tower",
     ],
 )
 
