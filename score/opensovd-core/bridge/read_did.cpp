@@ -12,11 +12,9 @@
  ********************************************************************************/
 #include "score/opensovd-core/bridge/read_did.h"
 #include "score/mw/diag/uds/negative_response_code.h"
-#include "score/mw/log/logger.h"
 
 #include <atomic>
 #include <chrono>
-#include <exception>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -127,12 +125,6 @@ ScoreDiagStatus ToStatus(const score::result::Error& error) noexcept
     return SCORE_DIAG_FAILED;
 }
 
-score::mw::log::Logger& BridgeLogger() noexcept
-{
-    static score::mw::log::Logger& logger = score::mw::log::CreateLogger("DIAG");
-    return logger;
-}
-
 class DemoReader final : public ReadDataByIdentifier
 {
   public:
@@ -236,15 +228,10 @@ void CompleteRead(const std::shared_ptr<RequestState>& state, Admission& admissi
                      bytes.size());
         }
     }
-    catch (const std::exception& ex)
-    {
-        // Detached worker: nothing above can catch. Handler code runs here, so a throw must become a failed read.
-        BridgeLogger().LogError() << "read handler threw: " << std::string_view{ex.what()};
-        Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
-    }
+    // Detached worker: nothing above can catch. Handler code runs here, so a throw becomes a failed read. Nothing is
+    // logged, as the logger allocates on first use and this may be the allocation-failure path.
     catch (...)
     {
-        BridgeLogger().LogError() << "read handler threw an unknown exception";
         Complete(*state, admission, SCORE_DIAG_READ_FAILED, 0U, nullptr, 0U);
     }
 }

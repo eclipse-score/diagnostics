@@ -23,7 +23,6 @@ cc_library(
     deps = [
         "//score/mw/diag/uds",
         "//score/mw/diag/uds:negative_response_code",
-        "@score_baselibs//score/mw/log:console",
     ],
 )
 
