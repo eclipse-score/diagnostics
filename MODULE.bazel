@@ -47,6 +47,7 @@ git_override(
     patches = [
         "//patches:opensovd-core-expose-deps.patch",
         "//patches:opensovd-core-expose-client.patch",
+        "//patches:opensovd-core-listener-default.patch",
     ],
     remote = "https://github.com/eclipse-opensovd/opensovd-core.git",
 )

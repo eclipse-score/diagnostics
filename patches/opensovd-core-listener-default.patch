@@ -1,0 +1,69 @@
+# *******************************************************************************
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+#
+# Preserve the S-CORE gateway's IPv4 loopback default and allow tests to supply
+# an already-bound listener, avoiding port reservation races during startup.
+#
+diff --git a/opensovd-cli/gateway/src/cli.rs b/opensovd-cli/gateway/src/cli.rs
+--- a/opensovd-cli/gateway/src/cli.rs
++++ b/opensovd-cli/gateway/src/cli.rs
+@@ -17 +17 @@
+-const DEFAULT_URL: &str = "http://localhost:7690/sovd";
++const DEFAULT_URL: &str = "http://127.0.0.1:7690/sovd";
+diff --git a/opensovd-cli/gateway/src/lib.rs b/opensovd-cli/gateway/src/lib.rs
+--- a/opensovd-cli/gateway/src/lib.rs
++++ b/opensovd-cli/gateway/src/lib.rs
+@@ -63 +63 @@
+-    run_gateway(cli, topology, libcli::shutdown_signal()).await
++    run_gateway(cli, topology, None, libcli::shutdown_signal()).await
+@@ -93 +93 @@
+-    run_gateway(cli, topology, shutdown).await
++    run_gateway(cli, topology, None, shutdown).await
+@@ -96 +96,17 @@
+-async fn run_gateway(
++/// Runs the gateway using a TCP listener already bound by the caller.
++///
++/// # Errors
++///
++/// Returns an error if configuration, startup or serving fails.
++pub async fn run_with_listener(
++    cli: cli::Cli,
++    topology: Topology,
++    listener: tokio::net::TcpListener,
++    shutdown: impl Future<Output = ()> + Send + 'static,
++) -> anyhow::Result<()> {
++    #[cfg(feature = "mock")]
++    anyhow::ensure!(!cli.mock, "--mock cannot be used with a supplied topology");
++    run_gateway(cli, topology, Some(listener), shutdown).await
++}
++
++async fn run_gateway(
+@@ -98 +114,2 @@
+-    topology: Topology,
++    topology: Topology,
++    listener: Option<tokio::net::TcpListener>,
+@@ -109 +126 @@
+-    serve(cli, auth, topology, shutdown).await
++    serve(cli, auth, topology, listener, shutdown).await
+@@ -174 +191,2 @@
+-    topology: Topology,
++    topology: Topology,
++    listener: Option<tokio::net::TcpListener>,
+@@ -210 +228,6 @@
+-    let (mut builder, local_addr) = configure_listener(builder, &cli, authority).await?;
++    let (mut builder, local_addr) = if let Some(listener) = listener {
++        let bound = Bound::of(&listener, false)?;
++        (builder.listener(listener), Some(bound))
++    } else {
++        configure_listener(builder, &cli, authority).await?
++    };
