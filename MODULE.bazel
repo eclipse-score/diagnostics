@@ -64,7 +64,7 @@ gcc.toolchain(
 )
 use_repo(gcc, "score_gcc_x86_64_toolchain")
 
-bazel_dep(name = "rules_python", version = "1.9.0", dev_dependency = True)
+bazel_dep(name = "rules_python", version = "1.9.0")
 
 # Python 3.12: Required for testing infrastructure and code generation tools
 _PYTHON_VERSION = "3.12"

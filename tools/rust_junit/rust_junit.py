@@ -90,8 +90,13 @@ def list_tests(binary: Path) -> list[str]:
 
 
 def find_test(name: str, sources: list[tuple[str, Path]]) -> tuple[str, int, list[str]]:
-    """Returns the file, line and verified requirements of the `#[test]` function of `name`."""
+    """Returns the file, line and verified requirements of the `#[test]` function of `name`.
+
+    The source files do not record module paths, so the function name must identify one test.
+    A name defined by several tests is rejected rather than attributed to the first of them.
+    """
     function = name.rsplit("::", 1)[-1]
+    found: list[tuple[str, int, list[str]]] = []
     for display, path in sources:
         lines = path.read_text(encoding="utf-8").splitlines()
         for index, line in enumerate(lines):
@@ -112,8 +117,19 @@ def find_test(name: str, sources: list[tuple[str, Path]]) -> tuple[str, int, lis
                 elif stripped and not stripped.startswith("//"):
                     break
             if any("test" in attribute for attribute in attributes):
-                return display, index + 1, verifies
-    raise LookupError(f"no #[test] function `{function}` in the given sources")
+                found.append((display, index + 1, verifies))
+    if not found:
+        raise LookupError(f"no #[test] function `{function}` in the given sources")
+    if len(found) > 1:
+        places = ", ".join(f"{display}:{line}" for display, line, _ in found)
+        raise LookupError(f"#[test] function `{function}` is ambiguous: {places}")
+    return found[0]
+
+
+def selected_tests(binary: Path) -> list[str]:
+    """The tests `bazel test --test_filter` selects. Like libtest, it keeps the tests whose name contains the filter."""
+    only = os.environ.get("TESTBRIDGE_TEST_ONLY", "")
+    return [name for name in list_tests(binary) if only in name]
 
 
 def run_test(binary: Path, name: str) -> tuple[str, str, float]:
@@ -208,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     binary = resolve(options.binary)
     sources = [(display_path(source), resolve(source)) for source in options.source]
     results: list[Result] = []
-    for name in list_tests(binary):
+    for name in selected_tests(binary):
         file, line, verifies = find_test(name, sources)
         status, message, seconds = run_test(binary, name)
         print(f"{status:8} {name}", file=sys.stderr)

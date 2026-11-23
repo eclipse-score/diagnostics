@@ -12,8 +12,10 @@
 // *******************************************************************************
 use std::ffi::c_void;
 use std::fmt;
+use std::future::Future;
 use std::marker::{PhantomData, PhantomPinned};
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -135,6 +137,8 @@ impl From<ReadError> for DataError {
 
 type Reply = Result<Vec<u8>, ReadError>;
 
+type CompletionContext = (oneshot::Sender<Reply>, Arc<AtomicBool>);
+
 struct Handler(NonNull<ScoreDiagReader>);
 
 // SAFETY: the handle is immutable from Rust; C++ shares handler state via shared_ptr, counts requests
@@ -148,7 +152,10 @@ impl Drop for Handler {
     }
 }
 
-struct Request(NonNull<ScoreDiagReadRequest>);
+struct Request {
+    handle: NonNull<ScoreDiagReadRequest>,
+    completed: Arc<AtomicBool>,
+}
 
 // SAFETY: a request has a single owner; cancel and release are never called concurrently.
 unsafe impl Send for Request {}
@@ -157,14 +164,17 @@ unsafe impl Send for Request {}
 impl Drop for Request {
     fn drop(&mut self) {
         unsafe {
-            score_diag_read_cancel(self.0.as_ptr());
-            score_diag_read_release(self.0.as_ptr());
+            if !self.completed.load(Ordering::Acquire) {
+                score_diag_read_cancel(self.handle.as_ptr());
+            }
+            score_diag_read_release(self.handle.as_ptr());
         }
     }
 }
 
 unsafe extern "C" fn complete(context: *mut c_void, status: u8, nrc: u8, data: *const u8, size: usize) {
-    let sender = unsafe { Box::from_raw(context.cast::<oneshot::Sender<Reply>>()) };
+    let (sender, completed) = *unsafe { Box::from_raw(context.cast::<CompletionContext>()) };
+    completed.store(true, Ordering::Release);
     let reply = match ReadStatus::from_raw(status) {
         Some(ReadStatus::Ok) if size == 0 => Ok(Vec::new()),
         Some(ReadStatus::Ok) if data.is_null() => Err(ReadError::Failed),
@@ -208,12 +218,18 @@ impl ReadDid {
     /// Reads the raw DID payload.
     // # req-Id: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__non_blocking_reads, comp_req__uds_data_bridge__read_timeout
     pub async fn read_bytes(&self) -> Result<Vec<u8>, ReadError> {
+        self.read_until(tokio::time::sleep(self.timeout)).await
+    }
+
+    /// Reads the raw DID payload, giving up with `ReadError::Timeout` once `deadline` completes first.
+    async fn read_until(&self, deadline: impl Future<Output = ()>) -> Result<Vec<u8>, ReadError> {
         let (sender, receiver) = oneshot::channel::<Reply>();
         let request = self.start(sender)?;
-        let result = tokio::time::timeout(self.timeout, receiver)
-            .await
-            .map_err(|_| ReadError::Timeout)?
-            .map_err(|_| ReadError::Failed)?;
+        let result = tokio::select! {
+            biased;
+            reply = receiver => reply.map_err(|_| ReadError::Failed)?,
+            () = deadline => return Err(ReadError::Timeout),
+        };
         drop(request);
         result
     }
@@ -222,19 +238,22 @@ impl ReadDid {
     /// so the async caller only holds the owned `Request`.
     // # req-Id: comp_req__uds_data_bridge__read_admission
     fn start(&self, sender: oneshot::Sender<Reply>) -> Result<Request, ReadError> {
-        let context: *mut c_void = Box::into_raw(Box::new(sender)).cast();
+        let completed = Arc::new(AtomicBool::new(false));
+        let context: *mut c_void = Box::into_raw(Box::new((sender, completed.clone()))).cast();
         let mut request = std::ptr::null_mut();
         let status =
             CallStatus::from_raw(unsafe { score_diag_read_start(self.handler.0.as_ptr(), context, complete, &mut request) });
         if status != CallStatus::Ok {
             // The completion is not called when the read does not start, so the sender is reclaimed here.
-            drop(unsafe { Box::from_raw(context.cast::<oneshot::Sender<Reply>>()) });
+            drop(unsafe { Box::from_raw(context.cast::<CompletionContext>()) });
             return Err(match status {
                 CallStatus::Busy => ReadError::Busy,
                 _ => ReadError::Failed,
             });
         }
-        NonNull::new(request).map(Request).ok_or(ReadError::Failed)
+        NonNull::new(request)
+            .map(|handle| Request { handle, completed })
+            .ok_or(ReadError::Failed)
     }
 }
 
@@ -403,11 +422,27 @@ mod tests {
 
     // # verifies: comp_req__uds_data_bridge__read_timeout
     #[tokio::test(flavor = "current_thread")]
+    async fn completed_read_does_not_cancel_retained_token() {
+        let control = Control::new();
+        let reader = control.reader(Duration::from_secs(30));
+        let task = tokio::spawn(async move { reader.read_bytes().await });
+        wait_until(|| control.started() == 1).await;
+        control.complete();
+        assert_eq!(task.await.expect("task").expect("read"), b"ok");
+        assert_eq!(control.stopped(), 0, "completed reads must not stop the handler token");
+    }
+
+    // # verifies: comp_req__uds_data_bridge__read_timeout
+    #[tokio::test(flavor = "current_thread")]
     async fn timeout_and_dropped_read_cancel_safely() {
         let control = Control::new();
-        let reader = control.reader(Duration::from_millis(10));
-        assert_eq!(reader.read_bytes().await, Err(ReadError::Timeout));
-        wait_until(|| control.stopped() == 1).await;
+        let reader = control.reader(Duration::from_secs(30));
+        // The deadline fires only once the handler has started the read, so the timeout cancels a dispatched read.
+        assert_eq!(
+            reader.read_until(wait_until(|| control.started() == 1)).await,
+            Err(ReadError::Timeout)
+        );
+        assert_eq!(control.stopped(), 1);
         let pending = control.reader(Duration::from_secs(30));
         let task = tokio::spawn(async move { pending.read_bytes().await });
         wait_until(|| control.started() == 2).await;

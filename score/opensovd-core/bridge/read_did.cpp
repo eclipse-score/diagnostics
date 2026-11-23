@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <exception>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <string_view>
@@ -292,8 +293,28 @@ score::Result<ScoreDiagReader*> RegisterReadDataByIdentifier(std::shared_ptr<Rea
     {
         return score::MakeUnexpected<ScoreDiagReader*>(MakeBridgeError(BridgeErrc::kInvalidArgument));
     }
-    auto state = std::make_shared<HandlerState>();
-    state->handler = std::move(handler);
+    static std::mutex registry_mutex;
+    static std::map<ReadDataByIdentifier*, std::weak_ptr<HandlerState>> registry;
+    std::lock_guard<std::mutex> guard{registry_mutex};
+    for (auto entry = registry.begin(); entry != registry.end();)
+    {
+        if (entry->second.expired())
+        {
+            entry = registry.erase(entry);
+        }
+        else
+        {
+            ++entry;
+        }
+    }
+    auto& registered = registry[handler.get()];
+    auto state = registered.lock();
+    if (!state)
+    {
+        state = std::make_shared<HandlerState>();
+        state->handler = std::move(handler);
+        registered = state;
+    }
     return new ScoreDiagReader{std::move(state)};
 }
 }  // namespace score::opensovd::bridge
@@ -336,11 +357,15 @@ extern "C" ScoreDiagStatus score_diag_demo_reader_create(std::uint32_t delay_ms,
 
 extern "C" ScoreDiagStatus score_diag_reader_clone(const ScoreDiagReader* reader, ScoreDiagReader** out)
 {
-    if (reader == nullptr || out == nullptr)
+    if (out == nullptr)
     {
         return SCORE_DIAG_INVALID_ARGUMENT;
     }
     *out = nullptr;
+    if (reader == nullptr)
+    {
+        return SCORE_DIAG_INVALID_ARGUMENT;
+    }
     try
     {
         *out = new ScoreDiagReader{reader->state};
@@ -369,11 +394,15 @@ extern "C" ScoreDiagStatus score_diag_read_start(ScoreDiagReader* reader,
                                                  ScoreDiagReadCompletion completion,
                                                  ScoreDiagReadRequest** out)
 {
-    if (reader == nullptr || completion == nullptr || out == nullptr)
+    if (out == nullptr)
     {
         return SCORE_DIAG_INVALID_ARGUMENT;
     }
     *out = nullptr;
+    if (reader == nullptr || completion == nullptr)
+    {
+        return SCORE_DIAG_INVALID_ARGUMENT;
+    }
     try
     {
         auto request = StartRead(*reader, context, completion);

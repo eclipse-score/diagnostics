@@ -54,8 +54,10 @@ Functional Requirements
    :satisfied_by: comp__sovd_gateway
 
    The SOVD gateway shall take its listen address from ``SCORE_GATEWAY_ADDRESS`` and the base URL of its
-   upstream SOVD server from ``SCORE_UPSTREAM_URL``, which shall start with ``http://``, and shall refuse to start
-   with any other URL. It shall forward nothing when ``SCORE_UPSTREAM_URL`` is unset or empty.
+   upstream SOVD server from ``SCORE_UPSTREAM_URL``. The upstream URL shall either start with ``http://``, or with
+   ``unix:`` followed by the path of a Unix domain socket and optionally ``:`` and a base path, such as
+   ``unix:/run/cda.sock:/vehicle/v15``. The SOVD gateway shall refuse to start with any other URL. It shall forward
+   nothing when ``SCORE_UPSTREAM_URL`` is unset or empty.
 
 .. comp_req:: Forwarding to the Upstream
    :id: comp_req__sovd_gateway__forwarding
@@ -133,9 +135,13 @@ Functional Requirements
    :satisfied_by: comp__sovd_gateway
 
    The SOVD gateway shall acquire a lock of the whole vehicle from every SOVD server of the vehicle, its upstream
-   SOVD servers and the SOVD server within the gateway itself, answer it with a lock ID of its own, keep track of
-   the lock until it is released, and shall release it on all of these servers together, never on a part of them.
-   When an upstream refuses, the SOVD gateway shall release what it acquired.
+   SOVD servers and the SOVD server within the gateway itself, answer it with a lock ID of its own, and keep track
+   of the lock until it is released. When an upstream refuses, the SOVD gateway shall send a release for the parts
+   it acquired and answer the refusal. A release shall be sent to all servers holding a part of the lock at the same
+   time, and a part that is already released shall not make a repeated release fail. If a part cannot be released,
+   the SOVD gateway shall answer with that failure. The lock is then held on some of the servers only, until the
+   client repeats the release or the upstream lock expires. The rollback after a refused acquisition is best-effort
+   in the same way.
 
 .. comp_req:: Discovery Time Limit
    :id: comp_req__sovd_gateway__discovery_timeout

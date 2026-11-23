@@ -173,7 +173,7 @@ async fn start_cda(binary: &Path, config: &Path, socket: &Path) -> Option<(Child
     panic!("CDA did not become reachable: {last_error:?}");
 }
 
-// # verifies: comp_req__sovd_gateway__single_entry_point, comp_req__sovd_gateway__forwarding, comp_req__sovd_gateway__merged_discovery, comp_req__sovd_gateway__reference_rewrite, comp_req__cda__http_server_port
+// # verifies: comp_req__sovd_gateway__single_entry_point, comp_req__sovd_gateway__forwarding, comp_req__sovd_gateway__merged_discovery, comp_req__sovd_gateway__reference_rewrite
 #[tokio::test(flavor = "current_thread")]
 async fn cda_serves_version_and_components() {
     let binary = runfile("classic-diagnostic-adapter+/cda-main/opensovd-cda");
@@ -229,6 +229,16 @@ async fn cda_serves_version_and_components() {
         .expect("discover apps through gateway");
     assert!(apps.items.iter().any(|app| app.id == "sovd2uds"));
     assert!(apps.items.iter().any(|app| app.id == "score-diagnostics"));
+    let cda_app = apps
+        .items
+        .iter()
+        .find(|app| app.id == "sovd2uds")
+        .expect("CDA app through gateway");
+    assert_eq!(
+        cda_app.href.0,
+        format!("{gateway_url}/apps/sovd2uds"),
+        "CDA app reference must be rewritten to the gateway URL"
+    );
     let listing = format!("{:?}", apps.items);
     assert!(
         !listing.contains(&socket.0.display().to_string()),
