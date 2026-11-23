@@ -185,6 +185,7 @@ void Complete(RequestState& state,
     state.completion(state.context, status, nrc, data, size);
 }
 
+// # req-Id: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__nrc_errors
 void CompleteRead(const std::shared_ptr<RequestState>& state, Admission& admission)
 {
     try
@@ -260,6 +261,7 @@ struct ScoreDiagReadRequest
 
 namespace
 {
+// # req-Id: comp_req__uds_data_bridge__read_admission, comp_req__uds_data_bridge__non_blocking_reads
 score::Result<ScoreDiagReadRequest*> StartRead(ScoreDiagReader& reader,
                                                void* context,
                                                ScoreDiagReadCompletion completion)
