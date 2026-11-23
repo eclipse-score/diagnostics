@@ -84,7 +84,11 @@ index 4eba4cd..91c110e 100644
 diff --git a/opensovd-cli/gateway/src/lib.rs b/opensovd-cli/gateway/src/lib.rs
 --- a/opensovd-cli/gateway/src/lib.rs
 +++ b/opensovd-cli/gateway/src/lib.rs
-@@ -96,3 +96,24 @@
+@@ -93,6 +93,27 @@
+     run_gateway(cli, topology, shutdown).await
+ }
+-
++
 +/// Runs the embedded gateway with application-supplied auth and signal handling.
 +pub async fn run_with_auth(cli: cli::Cli, topology: Topology, auth: Auth) -> anyhow::Result<()> {
 +    run_with_auth_and_shutdown(cli, topology, auth, libcli::shutdown_signal()).await
@@ -109,17 +113,19 @@ diff --git a/opensovd-cli/gateway/src/lib.rs b/opensovd-cli/gateway/src/lib.rs
  async fn run_gateway(
      mut cli: cli::Cli,
      topology: Topology,
-@@ -120,1 +141,1 @@ fn create_auth(args: &mut cli::AuthArgs) -> anyhow::Result<Option<Auth>> {
+@@ -117,6 +138,14 @@
+     Ok(Some(if args.policy.is_empty() {
+         Auth::new(jwt, Authenticated)
+     } else {
 -        Auth::new(jwt, create_rego_authorizer(args)?)
 +        Auth::new(jwt, RequireAuthenticated(create_rego_authorizer(args)?))
-@@ -124,2 +145,10 @@
+     }))
++}
++
 +struct RequireAuthenticated<A>(A);
 +
 +impl<A: opensovd_server::Authorizer> opensovd_server::Authorizer for RequireAuthenticated<A> {
 +    fn authorize(&self, access: &opensovd_server::Access<'_>) -> bool {
 +        access.principal.is_some() && self.0.authorize(access)
 +    }
-+}
-+
- fn create_jwt_authenticator(
-     jwks: &Path,
+ }
