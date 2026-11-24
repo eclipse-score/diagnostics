@@ -97,39 +97,6 @@ fn write_config(path: &Path, database: &Path, storage: &Path, socket: &Path) {
 /// startup and is retried on a new port.
 const START_ATTEMPTS: usize = 5;
 
-/// Sends one HTTP/1.1 request to the gateway at `address` and returns the status line and the body.
-async fn http(address: &str, method: &str, path: &str, body: &str) -> Option<(String, String)> {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let mut stream = tokio::net::TcpStream::connect(address).await.ok()?;
-    let request = format!(
-        "{method} {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    );
-    stream.write_all(request.as_bytes()).await.ok()?;
-    let mut response = Vec::new();
-    stream.read_to_end(&mut response).await.ok()?;
-    let response = String::from_utf8(response).ok()?;
-    let (head, body) = response.split_once("\r\n\r\n")?;
-    Some((head.lines().next()?.to_owned(), body.to_owned()))
-}
-
-/// Gets a token from the `authorize` of the gateway at `address`, as a client does before its first
-/// request. The token is the one the gateway forwards to the CDA, which reads its `sub` and `exp`.
-async fn gateway_token(address: &str) -> String {
-    let (status, body) = http(
-        address,
-        "POST",
-        "/sovd/v1/authorize",
-        r#"{"client_id":"integration-test","client_secret":"unchecked"}"#,
-    )
-    .await
-    .expect("request a token from the gateway");
-    assert!(status.contains(" 200"), "authorize: {status} {body}");
-    let body: serde_json::Value = serde_json::from_str(&body).expect("authorize body");
-    assert_eq!(body["token_type"], "Bearer", "{body}");
-    body["access_token"].as_str().expect("access_token").to_owned()
-}
-
 fn free_port() -> u16 {
     std::net::TcpListener::bind("127.0.0.1:0")
         .and_then(|listener| listener.local_addr())
@@ -150,27 +117,35 @@ async fn start_gateway(binary: &Path, upstream: &str) -> Option<(ChildGuard, Cli
             .spawn()
             .expect("spawn gateway"),
     );
-    // version-info needs no token, so it tells when the gateway is up.
-    let mut last_status = None;
-    let mut up = false;
+    // authorize needs no token, so it tells when the gateway is up. The token it issues is the one
+    // the gateway forwards to the CDA, which reads its `sub` and `exp`.
+    let url = format!("http://{address}/sovd/v1");
+    let anonymous = Client::builder()
+        .base_uri(&url)
+        .expect("gateway URL")
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("anonymous gateway client");
+    let mut last_error = None;
+    let mut issued = None;
     for _ in 0..120 {
         if let Some(status) = child.0.try_wait().expect("check gateway process") {
             eprintln!("gateway exited during startup: {status}");
             return None;
         }
-        match http(&address, "GET", "/sovd/version-info", "").await {
-            Some((status, _)) if status.contains(" 200") => {
-                up = true;
+        match anonymous.authorize("integration-test", "unchecked").await {
+            Ok(response) => {
+                issued = Some(response);
                 break;
             }
-            other => last_status = other,
+            Err(error) => last_error = Some(error.to_string()),
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
-    assert!(up, "gateway did not become reachable: {last_status:?}");
-    let token = gateway_token(&address).await;
+    let issued = issued.unwrap_or_else(|| panic!("gateway did not become reachable: {last_error:?}"));
+    assert_eq!(issued.token_type, "Bearer", "{issued:?}");
+    let token = issued.access_token;
     let value = http::HeaderValue::from_str(&format!("Bearer {token}")).expect("token header");
-    let url = format!("http://{address}/sovd/v1");
     let client = Client::builder()
         .base_uri(&url)
         .expect("gateway URL")
@@ -488,7 +463,6 @@ async fn cda_serves_version_and_components() {
     assert_eq!(local.data["value"].as_str(), Some("1.0.0"));
     let output = Command::new(&example)
         .arg(&gateway_url)
-        .env("SOVD_AUTH_TOKEN", &token)
         .output()
         .expect("run example client against gateway");
     assert!(
