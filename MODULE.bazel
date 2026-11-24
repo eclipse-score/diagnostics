@@ -40,10 +40,10 @@ bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "opensovd_core", version = "0.0.0")
 
 # feat/score-integration includes the embeddable gateway runner, the public mDNS target and the
-# public client, server and shared dependency targets.
+# public client, server and shared dependency targets, and Client::authorize.
 git_override(
     module_name = "opensovd_core",
-    commit = "ca26b286524ce4822d9aed98fb3be4c364e949bb",
+    commit = "f61eeeb4133e5c5a7c3541861489f12e306e4ee4",
     remote = "https://github.com/eclipse-opensovd/opensovd-core.git",
 )
 
