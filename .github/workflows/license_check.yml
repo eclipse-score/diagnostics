@@ -29,3 +29,19 @@ jobs:
       repo-url: "${{ github.server_url }}/${{ github.repository }}"
     secrets:
       dash-api-token: ${{ secrets.ECLIPSE_GITLAB_API_TOKEN }}
+
+  # Required check "License check mergeable": fails if the license check did not succeed.
+  can_merge:
+    name: License check mergeable
+    if: always()
+    needs:
+      - license-check
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any required job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more required jobs failed or were cancelled."
+          exit 1
