@@ -94,6 +94,7 @@ def browse(host: str, gateway_pid: int) -> None:
                 )
                 response = connection.getresponse()
                 body = response.read()
+                # version-info is read before the client has a token (§5.11).
                 assert response.status == 200, (response.status, body)
                 version_info = cast(VersionInfo, json.loads(body))
                 assert version_info["sovd_info"], body

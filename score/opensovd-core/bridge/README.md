@@ -55,7 +55,10 @@ unreachable upstream.
 
 ## Local Walkthrough
 
-Start the gateway in one terminal (loopback only, no production authorization). With `SOVD_UPSTREAM_URL` it
+Start the gateway in one terminal (loopback only, no production authorization). Every endpoint
+but `version-info` and `authorize` requires a bearer token, which the gateway does not verify:
+this placeholder mirrors the default security plugin of the CDA until S-CORE has an identity.
+Production uses `--auth-jwks` and `--auth-issuer` (public keys only). With `SOVD_UPSTREAM_URL` it
 forwards everything it does not host, for example to a CDA, and lists the CDA's entities next to its own:
 
 ```sh
@@ -63,11 +66,17 @@ SOVD_UPSTREAM_URL=http://127.0.0.1:20002/vehicle/v15 \
   bazel run --config=score_diag_x86_64_linux //score/opensovd-core:opensovd-gateway
 ```
 
-Query it from another terminal:
+Query it from another terminal. Get a token from the gateway's `authorize`, which does not check
+the credentials, and send it. The CDA accepts the same token when the gateway forwards it:
 
 ```sh
-curl --fail http://127.0.0.1:7690/sovd/v1/apps
-curl --fail http://127.0.0.1:7690/sovd/v1/apps/score-diagnostics/data/application.version
+TOKEN=$(curl --fail -X POST http://127.0.0.1:7690/sovd/v1/authorize \
+  -d '{"client_id":"tester","client_secret":"secret"}' | jq -r .access_token)
+```
+
+```sh
+curl --fail -H "Authorization: Bearer $TOKEN" http://127.0.0.1:7690/sovd/v1/apps
+curl --fail -H "Authorization: Bearer $TOKEN" http://127.0.0.1:7690/sovd/v1/apps/score-diagnostics/data/application.version
 ```
 
 The version read contains `data.value: "1.0.0"`. `//score/opensovd-cda:integration_test` starts a CDA and the
