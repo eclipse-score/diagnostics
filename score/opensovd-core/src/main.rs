@@ -11,32 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // *******************************************************************************
 
-use opensovd_core::{App, Component};
-use opensovd_extra::Federation;
+//! The OpenSOVD gateway of S-CORE: the gateway of opensovd-core with the entities of S-CORE.
+//!
+//! It takes the options and `SOVD_*` environment variables of the reference gateway
+//! (`opensovd-gateway --help` of opensovd-core), such as `SOVD_URL`, `SOVD_UPSTREAM_URL` for the CDA
+//! and `SOVD_MDNS` for the mDNS/DNS-SD announcement. Upstreams, authentication, TLS, mDNS and
+//! shutdown on SIGTERM or Ctrl-C are the ones of opensovd-core.
+
+use opensovd_core::{App, Component, Topology};
 use opensovd_models::data::DataCategory;
 use opensovd_providers::data::{Constant, DataProviderBuilder};
-use opensovd_server::{Server, Topology, VendorInfo};
+use std::process::ExitCode;
 use std::time::Duration;
-use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 #[path = "../bridge/read_did.rs"]
 mod read_did;
-
-mod upstream;
-
-const DEFAULT_ADDRESS: &str = "127.0.0.1:7690";
-const BASE_PATH: &str = "/sovd";
-
-fn address() -> String {
-    std::env::var("SCORE_GATEWAY_ADDRESS").unwrap_or_else(|_| DEFAULT_ADDRESS.to_owned())
-}
-
-/// Base URL of the SOVD server the gateway forwards to, such as the CDA at
-/// `http://127.0.0.1:20002/vehicle/v15`. Without it the gateway serves only its own entities.
-fn upstream_url() -> Option<String> {
-    std::env::var("SCORE_UPSTREAM_URL").ok().filter(|url| !url.is_empty())
-}
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
@@ -82,36 +72,24 @@ async fn topology() -> Result<Topology, Box<dyn std::error::Error>> {
     Ok(topology)
 }
 
-type Gateway = Server<VendorInfo>;
-
-/// The gateway on `listener`. With `upstream_url`, what it does not host is forwarded there and
-/// discovery lists the upstream's entities next to its own.
-// # req-Id: comp_req__sovd_gateway__upstream_config
-fn gateway(
-    listener: TcpListener,
-    topology: Topology,
-    upstream_url: Option<&str>,
-) -> Result<Gateway, Box<dyn std::error::Error>> {
-    let address = listener.local_addr()?;
-    let mut builder = Server::builder()
-        .base_uri(format!("http://{address}{BASE_PATH}"))?
-        .listener(listener)
-        .topology(topology.clone());
-    if let Some(url) = upstream_url {
-        tracing::info!(target: "forwarding", "Forwarding to {url}");
-        let upstream = upstream::upstream(url)?;
-        builder = builder.inner_layer(Federation::new(vec![upstream], topology)?.into_layer());
-    }
-    Ok(builder.build()?)
-}
-
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    let options = opensovd_gateway::cli::parse();
     init_tracing();
-    let listener = TcpListener::bind(address()).await?;
-    let server = gateway(listener, topology().await?, upstream_url().as_deref())?;
-    server.serve().await?;
-    Ok(())
+    let topology = match topology().await {
+        Ok(topology) => topology,
+        Err(error) => {
+            tracing::error!("Cannot set up the topology: {error}");
+            return ExitCode::FAILURE;
+        },
+    };
+    match opensovd_gateway::run(options, topology).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            tracing::error!("{error:#}");
+            ExitCode::FAILURE
+        },
+    }
 }
 
 #[cfg(test)]
@@ -119,26 +97,122 @@ mod tests {
     use super::*;
     use opensovd_client::Client;
 
-    async fn serve(upstream_url: Option<&str>) -> (tokio::task::JoinHandle<()>, Client) {
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
-        let address = listener.local_addr().expect("address");
-        let server = gateway(listener, topology().await.expect("topology"), upstream_url).expect("server");
-        let task = tokio::spawn(async move {
-            let _ = server.serve().await;
-        });
+    // # verifies: comp_req__sovd_gateway__upstream_config
+    #[test]
+    fn upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls() {
+        let parse = |urls| {
+            opensovd_gateway::cli::try_parse_from(["opensovd-gateway", "--upstream-url", urls])
+                .expect("options")
+                .upstream
+                .config()
+        };
+        let config = parse("http://localhost:20002/vehicle/v15,unix:///run/cda.sock:/vehicle/v15")
+            .expect("mixed upstreams");
+        assert_eq!(config.upstreams.len(), 2);
+        assert!(parse("https://localhost:20002/vehicle/v15").is_err());
+        assert!(parse("unix:relative.sock").is_err());
+    }
+
+    fn spawn_gateway(
+        options: opensovd_gateway::cli::Cli,
+        topology: Topology,
+    ) -> tokio::task::JoinHandle<Result<(), String>> {
+        tokio::spawn(async move {
+            opensovd_gateway::run_with_shutdown(options, topology, std::future::pending())
+                .await
+                .map_err(|error| format!("{error:#}"))
+        })
+    }
+
+    /// The gateway binds its own port from the URL, so a free port is picked and released before it
+    /// starts. Another process can take it in between; the gateway then exits during startup and is
+    /// retried on a new port.
+    const START_ATTEMPTS: usize = 5;
+
+    fn free_address() -> std::net::SocketAddr {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .expect("pick test port")
+    }
+
+    async fn wait_for_ready(
+        task: &mut tokio::task::JoinHandle<Result<(), String>>,
+        client: &Client,
+    ) -> Result<(), String> {
+        let ready = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let request = client.list_apps();
+                tokio::select! {
+                    result = &mut *task => return Err(format!("gateway exited before readiness: {result:?}")),
+                    result = request.send() => if result.is_ok() { return Ok(()); },
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        }).await;
+        match ready {
+            Ok(result) => result,
+            Err(_) => {
+                task.abort();
+                Err("gateway did not become ready within 5 seconds".to_owned())
+            },
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn gateway_startup_errors_are_reported() {
+        let address = free_address();
+        let url = format!("http://{address}/sovd");
+        let options = opensovd_gateway::cli::try_parse_from([
+            "opensovd-gateway",
+            "--url",
+            url.as_str(),
+            "--cors-origin",
+            "*",
+            "--cors-credentials",
+        ])
+        .expect("options");
+        let mut task = spawn_gateway(options, topology().await.expect("topology"));
         let client = Client::builder()
             .base_uri(&format!("http://{address}/sovd/v1"))
             .expect("URL")
-            .timeout(Duration::from_secs(5))
             .build()
             .expect("client");
-        (task, client)
+        let error = wait_for_ready(&mut task, &client).await.expect_err("invalid CORS");
+        assert!(error.contains("credentials"), "{error}");
+    }
+
+    /// Runs the gateway on a free port of the loopback address with the extra `options`, such as
+    /// `--upstream-url`, until the returned task is aborted.
+    async fn serve(options: &[&str]) -> (tokio::task::JoinHandle<Result<(), String>>, Client) {
+        let mut last_error = String::new();
+        for _ in 0..START_ATTEMPTS {
+            let url = format!("http://{}/sovd", free_address());
+            let parsed = opensovd_gateway::cli::try_parse_from(
+                ["opensovd-gateway", "--url", url.as_str()]
+                    .into_iter()
+                    .chain(options.iter().copied()),
+            )
+            .expect("options");
+            let topology = topology().await.expect("topology");
+            let mut task = spawn_gateway(parsed, topology);
+            let client = Client::builder()
+                .base_uri(&format!("{url}/v1"))
+                .expect("URL")
+                .timeout(Duration::from_secs(5))
+                .build()
+                .expect("client");
+            match wait_for_ready(&mut task, &client).await {
+                Ok(()) => return (task, client),
+                Err(error) => last_error = error,
+            }
+        }
+        panic!("gateway did not start on any free port: {last_error}");
     }
 
     // # verifies: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__utf8_data, comp_req__sovd_gateway__hosted_entities
     #[tokio::test(flavor = "current_thread")]
     async fn registered_application_is_discoverable_and_serves_data() {
-        let (task, client) = serve(None).await;
+        let (task, client) = serve(&[]).await;
         let apps = client.list_apps().send().await.expect("list apps");
         assert!(apps.items.iter().any(|app| app.id == "score-diagnostics"));
         let app = client.app("score-diagnostics");
@@ -155,12 +229,63 @@ mod tests {
         let _ = task.await;
     }
 
-    // # verifies: comp_req__sovd_gateway__upstream_unavailable, comp_req__sovd_gateway__upstream_config
+    /// A fake CDA on a Unix domain socket: every request gets one component, with an href to the
+    /// CDA's own API, as the CDA sends them.
+    fn serve_socket_upstream(path: &std::path::Path) -> tokio::task::JoinHandle<()> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::UnixListener::bind(path).expect("socket");
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    let mut buffer = [0u8; 1024];
+                    while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                        match stream.read(&mut buffer).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(read) => request.extend_from_slice(&buffer[..read]),
+                        }
+                    }
+                    let body = r#"{"items":[{"id":"ecu1","name":"ecu1","href":"http://localhost/Vehicle/v15/components/ecu1"}]}"#;
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                        body.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes()).await;
+                });
+            }
+        })
+    }
+
+    // # verifies: comp_req__sovd_gateway__upstream_config
+    #[tokio::test(flavor = "current_thread")]
+    async fn upstream_entities_are_listed_over_a_unix_socket() {
+        let dir = std::env::temp_dir().join(format!("score-gateway-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directory");
+        let path = dir.join("cda.sock");
+        let _ = std::fs::remove_file(&path);
+        let cda = serve_socket_upstream(&path);
+        let url = format!("unix:{}:/vehicle/v15", path.display());
+        let (task, client) = serve(&["--upstream-url", &url]).await;
+        let components = client.list_components().send().await.expect("list components");
+        let ecu = components.items.iter().find(|component| component.id == "ecu1");
+        let ecu = ecu.unwrap_or_else(|| panic!("ecu1 not listed: {components:?}"));
+        let href = &ecu.href.0;
+        assert!(
+            href.starts_with("http://127.0.0.1:") && href.ends_with("/sovd/v1/components/ecu1"),
+            "href not rewritten to the gateway: {href}"
+        );
+        task.abort();
+        cda.abort();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // # verifies: comp_req__sovd_gateway__upstream_unavailable
     #[tokio::test(flavor = "current_thread")]
     async fn unreachable_upstream_keeps_local_entities_available() {
-        let socket = std::env::temp_dir().join(format!("opensovd-unreachable-{}.sock", std::process::id()));
-        let url = format!("unix:{}:/vehicle/v15", socket.display());
-        let (task, client) = serve(Some(&url)).await;
+        let unused = std::net::TcpListener::bind("127.0.0.1:0").expect("port");
+        let url = format!("http://{}/vehicle/v15", unused.local_addr().expect("address"));
+        drop(unused);
+        let (task, client) = serve(&["--upstream-url", &url]).await;
         let apps = client.list_apps().send().await.expect("list apps");
         assert!(apps.items.iter().any(|app| app.id == "score-diagnostics"));
         let error = client
@@ -174,7 +299,7 @@ mod tests {
             "{error:?}"
         );
         assert!(
-            !format!("{error:?}").contains(&socket.display().to_string()),
+            !format!("{error:?}").contains(&url),
             "upstream address leaked: {error:?}"
         );
         task.abort();

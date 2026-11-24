@@ -61,6 +61,9 @@ jobs:
           werror @score_baselibs//score/result:error 'any | not' \
             || { echo "-Werror applied to external repository compile actions"; exit 1; }
 
+      - name: Check downstream package loading
+        run: python3 tests/bzlmod_consumer_test.py
+
       - name: Bazel Build
         run: |
           read -r -a targets <<< "${BAZEL_BUILD_TARGETS}"
@@ -72,6 +75,12 @@ jobs:
           read -r -a targets <<< "${BAZEL_TEST_TARGETS}"
 
           bazel test --config=score_diag_x86_64_linux -- "${targets[@]}"
+
+      - name: Test gateway mDNS discovery and withdrawal
+        run: |
+          bazel test --config=score_diag_x86_64_linux \
+            --test_tag_filters= --cache_test_results=no \
+            //score/opensovd-core/tests:mdns_browse_test
 
   # Required check "Bazel Build (Linux) mergeable": fails if the Linux build or tests did not succeed.
   can_merge:

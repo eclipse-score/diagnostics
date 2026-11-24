@@ -15,7 +15,7 @@ module(name = "score_diagnostics")
 bazel_dep(name = "classic-diagnostic-adapter", version = "0.1.0")
 git_override(
     module_name = "classic-diagnostic-adapter",
-    commit = "4c443a0f8849e61a374a45a312328d5408d7efe5",
+    commit = "f613cde67473d6746725edc9cbf8f64179a74f6a",
     patch_strip = 1,
     patches = [
         "//patches:classic-diagnostic-adapter-export-requirements.patch",
@@ -38,14 +38,12 @@ git_override(
 bazel_dep(name = "rules_foreign_cc", version = "0.17.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "opensovd_core", version = "0.0.0")
+
+# feat/score-integration includes the embeddable gateway runner, the public mDNS target and the
+# public client, server and shared dependency targets.
 git_override(
     module_name = "opensovd_core",
-    commit = "d296ccddd63e317694e9bce3017ff30836205394",
-    patch_strip = 1,
-    patches = [
-        "//patches:opensovd-core-expose-deps.patch",
-        "//patches:opensovd-core-expose-client.patch",
-    ],
+    commit = "ca26b286524ce4822d9aed98fb3be4c364e949bb",
     remote = "https://github.com/eclipse-opensovd/opensovd-core.git",
 )
 
@@ -64,6 +62,7 @@ gcc.toolchain(
 )
 use_repo(gcc, "score_gcc_x86_64_toolchain")
 
+# Public gateway and CDA packages load Python rules, even when building non-Python targets.
 bazel_dep(name = "rules_python", version = "1.9.0")
 
 # Python 3.12: Required for testing infrastructure and code generation tools
@@ -92,6 +91,16 @@ pip.parse(
     requirements_lock = "@score_docs_as_code//src:requirements.txt",
 )
 use_repo(pip, "module_template_docs_hub_env")
+
+# Independent DNS-SD client for the gateway's Linux network integration test.
+pip.parse(
+    hub_name = "gateway_test_deps",
+    python_version = _PYTHON_VERSION,
+    requirements_lock = "//score/opensovd-core/tests:requirements.txt",
+)
+use_repo(pip, "gateway_test_deps")
+
+bazel_dep(name = "rules_shell", version = "0.8.0", dev_dependency = True)
 
 # Add GoogleTest dependency
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
@@ -179,15 +188,17 @@ bazel_dep(name = "score_baselibs", version = "0.2.9")
 bazel_dep(name = "grpc", version = "1.76.0")
 
 # tooling
-bazel_dep(name = "score_tooling", version = "1.1.2", dev_dependency = True)
+bazel_dep(name = "score_tooling", version = "1.1.2")
+
 bazel_dep(name = "score_devcontainer", version = "1.11.0", dev_dependency = True)
 bazel_dep(name = "aspect_rules_lint", version = "2.3.0", dev_dependency = True)
 bazel_dep(name = "buildifier_prebuilt", version = "8.5.1.2", dev_dependency = True)
+bazel_dep(name = "toolchains_llvm", version = "1.8.0", dev_dependency = True)
 
 # docs-as-code
 bazel_dep(name = "score_docs_as_code", version = "9.1.1")
 
-bazel_dep(name = "score_process", version = "2.0.2", dev_dependency = True)
+bazel_dep(name = "score_process_description", version = "2.2.5", dev_dependency = True)
 
 # Feature requirements that the component requirements in docs/ are derived from.
 # 0.6.3 is the first release with the diagnostics feature (feat__diagnostics).

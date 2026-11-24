@@ -40,21 +40,20 @@ rust_binary(
     srcs = [
         "bridge/read_did.rs",
         "src/main.rs",
-        "src/upstream.rs",
     ],
+    # Not opensovd_gateway, the crate of the gateway of opensovd-core that this one runs.
+    crate_name = "score_gateway",
     edition = "2021",
     features = ["link_std_cpp_lib"],
     proc_macro_deps = ["@opensovd_core//:async-trait"],
     visibility = ["//visibility:public"],
     deps = [
         ":read_did_bridge",
-        "@opensovd_core//:http",
         "@opensovd_core//:opensovd-core",
-        "@opensovd_core//:opensovd-extra",
+        # The gateway of opensovd-core: options, upstreams, authentication, TLS and mDNS.
+        "@opensovd_core//:opensovd-gateway-lib",
         "@opensovd_core//:opensovd-models",
         "@opensovd_core//:opensovd-providers",
-        "@opensovd_core//:opensovd-server",
-        "@opensovd_core//:serde_json",
         "@opensovd_core//:tokio",
         "@opensovd_core//:tracing",
         "@opensovd_core//:tracing-subscriber",
@@ -86,7 +85,6 @@ rust_junit_test(
     sources = [
         "bridge/read_did.rs",
         "src/main.rs",
-        "src/upstream.rs",
     ],
 )
 
@@ -106,7 +104,6 @@ filegroup(
         "bridge/read_did.cpp",
         "bridge/read_did.rs",
         "src/main.rs",
-        "src/upstream.rs",
     ],
     visibility = ["//:__pkg__"],
 )

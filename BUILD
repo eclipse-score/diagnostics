@@ -12,7 +12,7 @@
 # *******************************************************************************
 
 load("@score_docs_as_code//:docs.bzl", "docs")
-load("@score_tooling//:defs.bzl", "copyright_checker", "dash_license_checker", "setup_starpls", "use_format_targets")
+load("@score_tooling//:defs.bzl", "copyright_checker", "dash_license_checker", "setup_starpls")
 load("//:project_config.bzl", "PROJECT_CONFIG")
 
 setup_starpls(
@@ -39,17 +39,16 @@ dash_license_checker(
     visibility = ["//visibility:public"],
 )
 
-# Add target for formatting checks
-use_format_targets()
-
 docs(
     code_targets = [
         "//score/opensovd-core:requirement_sources",
     ],
+    # ide_support also supplies the Python environment used by BasedPyright.
+    deps = ["@gateway_test_deps//zeroconf"],
     external_needs = [
         "//score/opensovd-cda:needs_json",
         "@score_platform//:needs_json_file",
-        "@score_process//:needs_json",
+        "@score_process_description//:needs_json_file",
     ],
     source_dir = "docs",
 )

@@ -53,11 +53,12 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__sovd_gateway
 
-   The SOVD gateway shall take its listen address from ``SCORE_GATEWAY_ADDRESS`` and the base URL of its
-   upstream SOVD server from ``SCORE_UPSTREAM_URL``. The upstream URL shall either start with ``http://``, or with
-   ``unix:`` followed by the path of a Unix domain socket and optionally ``:`` and a base path, such as
-   ``unix:/run/cda.sock:/vehicle/v15``. The SOVD gateway shall refuse to start with any other URL. It shall forward
-   nothing when ``SCORE_UPSTREAM_URL`` is unset or empty.
+   The SOVD gateway shall take its listen URL from ``SOVD_URL`` and the base URLs of its upstream SOVD servers
+   from the comma-separated ``SOVD_UPSTREAM_URL``. Each upstream shall use an ``http://`` URL or a Unix domain
+   socket URL of the form ``unix:<socket>[:<base path>]``, for example
+   ``unix:///run/cda.sock:/vehicle/v15``. The gateway shall refuse to start with an invalid upstream URL and
+   shall forward nothing when ``SOVD_UPSTREAM_URL`` is unset or empty and no upstream is supplied on the command
+   line.
 
 .. comp_req:: Forwarding to the Upstream
    :id: comp_req__sovd_gateway__forwarding
