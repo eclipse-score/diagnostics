@@ -198,7 +198,7 @@ bazel_dep(name = "toolchains_llvm", version = "1.8.0", dev_dependency = True)
 # docs-as-code
 bazel_dep(name = "score_docs_as_code", version = "6.0.0")
 
-bazel_dep(name = "score_process", version = "2.0.2", dev_dependency = True)
+bazel_dep(name = "score_process", version = "2.0.3", dev_dependency = True)
 
 # Feature requirements that the component requirements in docs/ are derived from.
 # 0.6.3 is the first release with the diagnostics feature (feat__diagnostics).
