@@ -6,5 +6,9 @@
   {
     "version": "pr-82",
     "url": "https://eclipse-score.github.io/diagnostics/pr-82/"
+  },
+  {
+    "version": "pr-84",
+    "url": "https://eclipse-score.github.io/diagnostics/pr-84/"
   }
 ]
