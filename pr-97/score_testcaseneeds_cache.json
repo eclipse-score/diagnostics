@@ -1314,19 +1314,5 @@
     "result_text": "",
     "PartiallyVerifies": "comp_req__sovd_gateway__single_entry_point,comp_req__sovd_gateway__forwarding,comp_req__sovd_gateway__merged_discovery,comp_req__sovd_gateway__reference_rewrite",
     "FullyVerifies": null
-  },
-  {
-    "name": "simulator_reads_through_gateway",
-    "file": "score/opensovd-cda/tests/integration.rs",
-    "line": "500",
-    "result": "skipped",
-    "repo_name": "local_repo",
-    "hash": "",
-    "url": "",
-    "TestType": "requirements-based",
-    "DerivationTechnique": "requirements-analysis",
-    "result_text": "ignored",
-    "PartiallyVerifies": null,
-    "FullyVerifies": null
   }
 ]
