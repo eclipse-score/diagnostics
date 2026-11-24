@@ -109,7 +109,7 @@ bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 bazel_dep(name = "rules_rust", version = "0.70.0")
 bazel_dep(name = "score_crates", version = "0.0.10")
 
-bazel_dep(name = "score_toolchains_rust", version = "0.9.1", dev_dependency = True)
+bazel_dep(name = "score_toolchains_rust", version = "0.10.1", dev_dependency = True)
 
 # Use the qualified Ferrocene toolchain for the supported Linux target.
 register_toolchains(
