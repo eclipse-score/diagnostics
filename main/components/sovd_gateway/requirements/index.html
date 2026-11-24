@@ -468,7 +468,7 @@
                   
   <section id="requirements">
 <span id="sovd-gateway-requirements"></span><h1>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h1>
-<div class="need_container docutils container" id="SNCB-0c47bbb9">
+<div class="need_container docutils container" id="SNCB-d865d447">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_document table" id="doc__sovd_gateway_requirements">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -514,7 +514,7 @@
 </div>
 <section id="functional-requirements">
 <h2>Functional Requirements<a class="headerlink" href="#functional-requirements" title="Link to this heading">#</a></h2>
-<div class="need_container docutils container" id="SNCB-5fbe024e">
+<div class="need_container docutils container" id="SNCB-51897814">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__single_entry_point">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -534,7 +534,7 @@
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a>, <a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_server">feat_req__diagnostics__sovd_server</a></span></span></div>
@@ -561,7 +561,7 @@ SOVD API base URL.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-0befef0f">
+<div class="need_container docutils container" id="SNCB-2329db21">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__upstream_config">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -581,8 +581,7 @@ SOVD API base URL.</p></td>
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Interface</span></span></div>
-<div class="line"><span class="needs_source_code_link"><span class="needs_label">source_code_link: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/main.rs#L89">score/opensovd-core/src/main.rs:89</a><em>; </em><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/upstream.rs#L29">score/opensovd-core/src/upstream.rs:29</a><em>; </em></span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/main.rs#L160">tests::unreachable_upstream_keeps_local_entities_available</a><em>; </em><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/upstream.rs#L67">upstream::tests::only_http_and_unix_upstreams_are_accepted</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-core/src/main.rs#L102">tests::upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls</a><em>; </em><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-core/src/main.rs#L261">tests::upstream_entities_are_listed_over_a_unix_socket</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a></span></span></div>
@@ -592,11 +591,12 @@ SOVD API base URL.</p></td>
 </td>
 <td class="meta" colspan="3"></td>
 </tr>
-<tr class="content row-odd"><td class="content" colspan="6"><p>The SOVD gateway shall take its listen address from <code class="docutils literal notranslate"><span class="pre">SCORE_GATEWAY_ADDRESS</span></code> and the base URL of its
-upstream SOVD server from <code class="docutils literal notranslate"><span class="pre">SCORE_UPSTREAM_URL</span></code>. The upstream URL shall either start with <code class="docutils literal notranslate"><span class="pre">http://</span></code>, or with
-<code class="docutils literal notranslate"><span class="pre">unix:</span></code> followed by the path of a Unix domain socket and optionally <code class="docutils literal notranslate"><span class="pre">:</span></code> and a base path, such as
-<code class="docutils literal notranslate"><span class="pre">unix:/run/cda.sock:/vehicle/v15</span></code>. The SOVD gateway shall refuse to start with any other URL. It shall forward
-nothing when <code class="docutils literal notranslate"><span class="pre">SCORE_UPSTREAM_URL</span></code> is unset or empty.</p></td>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The SOVD gateway shall take its listen URL from <code class="docutils literal notranslate"><span class="pre">SOVD_URL</span></code> and the base URLs of its upstream SOVD servers
+from the comma-separated <code class="docutils literal notranslate"><span class="pre">SOVD_UPSTREAM_URL</span></code>. Each upstream shall use an <code class="docutils literal notranslate"><span class="pre">http://</span></code> URL or a Unix domain
+socket URL of the form <code class="docutils literal notranslate"><span class="pre">unix:&lt;socket&gt;[:&lt;base</span> <span class="pre">path&gt;]</span></code>, for example
+<code class="docutils literal notranslate"><span class="pre">unix:///run/cda.sock:/vehicle/v15</span></code>. The gateway shall refuse to start with an invalid upstream URL and
+shall forward nothing when <code class="docutils literal notranslate"><span class="pre">SOVD_UPSTREAM_URL</span></code> is unset or empty and no upstream is supplied on the command
+line.</p></td>
 </tr>
 <tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
 <div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__sovd_gateway__upstream_config" title="comp_req__sovd_gateway__upstream_config">comp_req__sovd_gateway__upstream_config</a></span></span></div>
@@ -612,7 +612,7 @@ nothing when <code class="docutils literal notranslate"><span class="pre">SCORE_
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-a088f3f2">
+<div class="need_container docutils container" id="SNCB-10d81adc">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__forwarding">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -632,8 +632,7 @@ nothing when <code class="docutils literal notranslate"><span class="pre">SCORE_
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_source_code_link"><span class="needs_label">source_code_link: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/upstream.rs#L29">score/opensovd-core/src/upstream.rs:29</a><em>; </em></span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a>, <a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
@@ -660,7 +659,7 @@ collections, to its upstream SOVD server, and shall return the upstream’s stat
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-483a0a40">
+<div class="need_container docutils container" id="SNCB-b5a837db">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__merged_discovery">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -680,7 +679,7 @@ collections, to its upstream SOVD server, and shall return the upstream’s stat
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a></span></span></div>
@@ -706,7 +705,7 @@ collections, to its upstream SOVD server, and shall return the upstream’s stat
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-969c7f78">
+<div class="need_container docutils container" id="SNCB-5e0014b2">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__reference_rewrite">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -726,7 +725,7 @@ collections, to its upstream SOVD server, and shall return the upstream’s stat
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-cda/tests/integration.rs#L178">cda_serves_version_and_components</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a></span></span></div>
@@ -753,7 +752,7 @@ in the <code class="docutils literal notranslate"><span class="pre">Location</sp
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-d984a3c4">
+<div class="need_container docutils container" id="SNCB-31665b89">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__upstream_unavailable">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -773,7 +772,7 @@ in the <code class="docutils literal notranslate"><span class="pre">Location</sp
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/main.rs#L160">tests::unreachable_upstream_keeps_local_entities_available</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-core/src/main.rs#L284">tests::unreachable_upstream_keeps_local_entities_available</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_gateway">feat_req__diagnostics__sovd_gateway</a></span></span></div>
@@ -800,7 +799,7 @@ and shall answer forwarded requests with HTTP 502 and an error that contains no 
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-f4f9802f">
+<div class="need_container docutils container" id="SNCB-8c96c6c6">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__hosted_entities">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -820,8 +819,8 @@ and shall answer forwarded requests with HTTP 502 and an error that contains no 
 </tr>
 <tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
 <div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
-<div class="line"><span class="needs_source_code_link"><span class="needs_label">source_code_link: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/main.rs#L46">score/opensovd-core/src/main.rs:46</a><em>; </em></span></span></div>
-<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c559ea8fa2a24912c7aec40d10664a4652fafa7e/score/opensovd-core/src/main.rs#L140">tests::registered_application_is_discoverable_and_serves_data</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_source_code_link"><span class="needs_label">source_code_link: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-core/src/main.rs#L36">score/opensovd-core/src/main.rs:36</a><em>; </em></span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/c448631079236dbeb8cc30f1922b615e9188b46f/score/opensovd-core/src/main.rs#L214">tests::registered_application_is_discoverable_and_serves_data</a><em>; </em></span></span></div>
 <div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
 </span></span></div>
 <div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__sovd_server">feat_req__diagnostics__sovd_server</a></span></span></div>
@@ -849,7 +848,7 @@ forwarding them.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-ca53500e">
+<div class="need_container docutils container" id="SNCB-5d39eff8">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__vehicle_lock">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -901,7 +900,7 @@ in the same way.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-2cba0f1f">
+<div class="need_container docutils container" id="SNCB-191eb0c2">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__discovery_timeout">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -947,7 +946,7 @@ the entities it hosts; forwarded requests other than discovery shall have no tim
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-a5107d32">
+<div class="need_container docutils container" id="SNCB-fcfa5d6a">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__dot_segments">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -993,7 +992,7 @@ percent-encoded.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-b63c0306">
+<div class="need_container docutils container" id="SNCB-967ae4b8">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__sovd_gateway__forwarded_auth">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -1043,7 +1042,7 @@ The v1.0 gateway does not enable authentication, so this requirement is not part
 </section>
 <section id="assumptions-of-use-aou">
 <h2>Assumptions of Use (AoU)<a class="headerlink" href="#assumptions-of-use-aou" title="Link to this heading">#</a></h2>
-<div class="need_container docutils container" id="SNCB-657679a8">
+<div class="need_container docutils container" id="SNCB-7d0f5af5">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_aou_req table" id="aou_req__sovd_gateway__trusted_network">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">

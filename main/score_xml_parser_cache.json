@@ -110,7 +110,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 140,
+    "line": 214,
     "need": "comp_req__uds_data_bridge__read_handlers",
     "verify_type": "partially",
     "result": "passed",
@@ -122,7 +122,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 140,
+    "line": 214,
     "need": "comp_req__uds_data_bridge__utf8_data",
     "verify_type": "partially",
     "result": "passed",
@@ -134,7 +134,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 140,
+    "line": 214,
     "need": "comp_req__sovd_gateway__hosted_entities",
     "verify_type": "partially",
     "result": "passed",
@@ -146,7 +146,7 @@
   {
     "name": "tests::unreachable_upstream_keeps_local_entities_available",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 160,
+    "line": 284,
     "need": "comp_req__sovd_gateway__upstream_unavailable",
     "verify_type": "partially",
     "result": "passed",
@@ -156,9 +156,9 @@
     "url": ""
   },
   {
-    "name": "tests::unreachable_upstream_keeps_local_entities_available",
+    "name": "tests::upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 160,
+    "line": 102,
     "need": "comp_req__sovd_gateway__upstream_config",
     "verify_type": "partially",
     "result": "passed",
@@ -168,9 +168,9 @@
     "url": ""
   },
   {
-    "name": "upstream::tests::only_http_and_unix_upstreams_are_accepted",
-    "file": "score/opensovd-core/src/upstream.rs",
-    "line": 67,
+    "name": "tests::upstream_entities_are_listed_over_a_unix_socket",
+    "file": "score/opensovd-core/src/main.rs",
+    "line": 261,
     "need": "comp_req__sovd_gateway__upstream_config",
     "verify_type": "partially",
     "result": "passed",
