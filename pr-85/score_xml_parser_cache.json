@@ -110,7 +110,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 214,
+    "line": 253,
     "need": "comp_req__uds_data_bridge__read_handlers",
     "verify_type": "partially",
     "result": "passed",
@@ -122,7 +122,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 214,
+    "line": 253,
     "need": "comp_req__uds_data_bridge__utf8_data",
     "verify_type": "partially",
     "result": "passed",
@@ -134,7 +134,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 214,
+    "line": 253,
     "need": "comp_req__sovd_gateway__hosted_entities",
     "verify_type": "partially",
     "result": "passed",
@@ -146,7 +146,7 @@
   {
     "name": "tests::unreachable_upstream_keeps_local_entities_available",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 284,
+    "line": 323,
     "need": "comp_req__sovd_gateway__upstream_unavailable",
     "verify_type": "partially",
     "result": "passed",
@@ -158,7 +158,7 @@
   {
     "name": "tests::upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 102,
+    "line": 108,
     "need": "comp_req__sovd_gateway__upstream_config",
     "verify_type": "partially",
     "result": "passed",
@@ -170,7 +170,7 @@
   {
     "name": "tests::upstream_entities_are_listed_over_a_unix_socket",
     "file": "score/opensovd-core/src/main.rs",
-    "line": 261,
+    "line": 300,
     "need": "comp_req__sovd_gateway__upstream_config",
     "verify_type": "partially",
     "result": "passed",
@@ -242,7 +242,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": 178,
+    "line": 227,
     "need": "comp_req__sovd_gateway__single_entry_point",
     "verify_type": "partially",
     "result": "passed",
@@ -254,7 +254,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": 178,
+    "line": 227,
     "need": "comp_req__sovd_gateway__forwarding",
     "verify_type": "partially",
     "result": "passed",
@@ -266,7 +266,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": 178,
+    "line": 227,
     "need": "comp_req__sovd_gateway__merged_discovery",
     "verify_type": "partially",
     "result": "passed",
@@ -278,7 +278,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": 178,
+    "line": 227,
     "need": "comp_req__sovd_gateway__reference_rewrite",
     "verify_type": "partially",
     "result": "passed",
