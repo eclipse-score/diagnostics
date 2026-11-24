@@ -39,8 +39,8 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__fault_lib
 
-   The fault library shall let a component define its faults in a fault catalog, loaded from a JSON file on the
-   filesystem, passed as a JSON string, or built in code.
+   The fault library shall provide an API for defining and managing component fault catalogs. Fault catalogs can be
+   initialized from a JSON file, a JSON string, or constructed programmatically using the provided API.
 
 .. comp_req:: Unique Fault IDs in a Catalog
    :id: comp_req__fault_lib__catalog_unique_ids
