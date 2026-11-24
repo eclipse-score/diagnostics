@@ -139,7 +139,7 @@ Functional Requirements
    of the lock until it is released. When an upstream refuses, the SOVD gateway shall send a release for the parts
    it acquired and answer the refusal. A release shall be sent to all servers holding a part of the lock at the same
    time, and a part that is already released shall not make a repeated release fail. If a part cannot be released,
-   the SOVD gateway shall answer with that failure. The lock is then held on some of the servers only, until the
+   the SOVD gateway shall answer with that failure. The lock is then held only on the servers that still hold a part of it, until the
    client repeats the release or the upstream lock expires. The rollback after a refused acquisition is best-effort
    in the same way.
 
