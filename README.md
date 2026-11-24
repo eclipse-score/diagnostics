@@ -218,5 +218,4 @@ This repository maintains local patches for upstream dependencies:
 
 | Patch | Purpose | Status |
 |-------|---------|--------|
-| `opensovd-core-expose-deps.patch` | Public aliases for the Core crates and shared crates (tokio, tracing, ...) | Required until eclipse-opensovd/opensovd-core#247; upstream limits them to its own workspace |
-| `opensovd-core-expose-client.patch` | Adds BUILD for opensovd-client | Required until eclipse-opensovd/opensovd-core#247; upstream has no Bazel target for the client crate |
+| `classic-diagnostic-adapter-export-requirements.patch` | Exposes the CDA requirement sources and Sphinx configuration as `requirements_docs` | Required for `//score/opensovd-cda:needs_json`; upstream does not export them |
