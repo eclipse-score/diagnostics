@@ -45,16 +45,20 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="diagnostics-consumer-") as temp_dir:
         workspace = Path(temp_dir)
-        shutil.copytree(ROOT / "patches", workspace / "patches")
-        shutil.copyfile(ROOT / ".bazelversion", workspace / ".bazelversion")
-        (workspace / "MODULE.bazel").write_text(
-            'module(name = "diagnostics_consumer_test")\n'
-            'bazel_dep(name = "score_diagnostics", version = "0.0.0")\n'
-            f"local_path_override(module_name = 'score_diagnostics', path = {str(ROOT)!r})\n"
-            + "\n".join(overrides[name] for name in sorted(OVERRIDES)),
+        _ = shutil.copytree(ROOT / "patches", workspace / "patches")
+        _ = shutil.copyfile(ROOT / ".bazelversion", workspace / ".bazelversion")
+        _ = (workspace / "MODULE.bazel").write_text(
+            "\n".join(
+                [
+                    'module(name = "diagnostics_consumer_test")',
+                    'bazel_dep(name = "score_diagnostics", version = "0.0.0")',
+                    f"local_path_override(module_name = 'score_diagnostics', path = {str(ROOT)!r})",
+                    *(overrides[name] for name in sorted(OVERRIDES)),
+                ]
+            ),
             encoding="utf-8",
         )
-        subprocess.run(
+        _ = subprocess.run(
             [
                 "bazel",
                 "--batch",
