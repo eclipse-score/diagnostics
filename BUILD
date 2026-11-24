@@ -43,13 +43,13 @@ dash_license_checker(
 use_format_targets()
 
 docs(
-    data = [
-        "//score/opensovd-cda:needs_json",
-        "@score_platform//:needs_json",
-        "@score_process//:needs_json",
-    ],
-    scan_code = [
+    code_targets = [
         "//score/opensovd-core:requirement_sources",
+    ],
+    external_needs = [
+        "//score/opensovd-cda:needs_json",
+        "@score_platform//:needs_json_file",
+        "@score_process//:needs_json",
     ],
     source_dir = "docs",
 )
