@@ -84,3 +84,66 @@ jobs:
       bazel-target: "--lockfile_mode=error //:docs -- --github_user=${{ github.repository_owner }} --github_repo=${{ github.event.repository.name }}"
       retention-days: 3
       tests-report-artifact: test-reports
+
+  # Required check "On PR mergeable": fails if any pre-commit or test job did not succeed.
+  can_merge:
+    name: On PR mergeable
+    if: always()
+    needs:
+      - pre-commit
+      - test
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any required job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more required jobs failed or were cancelled."
+          exit 1
+
+  # Required check "Docs Build mergeable": fails if the documentation build did not succeed.
+  docs_can_merge:
+    name: Docs Build mergeable
+    if: always()
+    needs:
+      - docs-build
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any required job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more required jobs failed or were cancelled."
+          exit 1
+
+  # Secrets are not available to fork pull requests, so the license check is skipped for them.
+  license-check:
+    if: github.event_name == 'merge_group' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: eclipse-score/cicd-workflows/.github/workflows/license-check.yml@8d80e8df150cae21d53cbc8031d0f970648f7a67 # v0.0.3
+    permissions:
+      pull-requests: write
+      issues: write
+    with:
+      repo-url: "${{ github.server_url }}/${{ github.repository }}"
+      bazel-target: "run --lockfile_mode=error //:license-check"
+    secrets:
+      dash-api-token: ${{ secrets.ECLIPSE_GITLAB_API_TOKEN }}
+
+  # Required check "License check mergeable": fails if the license check did not succeed.
+  # A skipped license check fails it too, so fork pull requests cannot merge unchecked.
+  license_can_merge:
+    name: License check mergeable
+    if: always()
+    needs:
+      - license-check
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail if the license check did not succeed
+        if: needs.license-check.result != 'success' && github.event_name != 'push'
+        run: |
+          echo "The license check did not succeed. Pull requests from forks are not checked."
+          exit 1
