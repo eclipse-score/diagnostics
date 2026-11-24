@@ -1064,9 +1064,23 @@
     "FullyVerifies": null
   },
   {
+    "name": "tests::gateway_shutdown_runners_preserve_startup_errors",
+    "file": "score/opensovd-core/src/main.rs",
+    "line": "191",
+    "result": "passed",
+    "repo_name": "local_repo",
+    "hash": "",
+    "url": "",
+    "TestType": "requirements-based",
+    "DerivationTechnique": "requirements-analysis",
+    "result_text": "",
+    "PartiallyVerifies": null,
+    "FullyVerifies": null
+  },
+  {
     "name": "tests::gateway_startup_errors_are_reported",
     "file": "score/opensovd-core/src/main.rs",
-    "line": "162",
+    "line": "168",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
@@ -1080,7 +1094,7 @@
   {
     "name": "tests::registered_application_is_discoverable_and_serves_data",
     "file": "score/opensovd-core/src/main.rs",
-    "line": "214",
+    "line": "253",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
@@ -1094,7 +1108,7 @@
   {
     "name": "tests::unreachable_upstream_keeps_local_entities_available",
     "file": "score/opensovd-core/src/main.rs",
-    "line": "284",
+    "line": "323",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
@@ -1108,7 +1122,7 @@
   {
     "name": "tests::upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls",
     "file": "score/opensovd-core/src/main.rs",
-    "line": "102",
+    "line": "108",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
@@ -1122,7 +1136,7 @@
   {
     "name": "tests::upstream_entities_are_listed_over_a_unix_socket",
     "file": "score/opensovd-core/src/main.rs",
-    "line": "261",
+    "line": "300",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
@@ -1131,6 +1145,20 @@
     "DerivationTechnique": "requirements-analysis",
     "result_text": "",
     "PartiallyVerifies": "comp_req__sovd_gateway__upstream_config",
+    "FullyVerifies": null
+  },
+  {
+    "name": "score/opensovd-core/gateway_auth_test",
+    "file": null,
+    "line": null,
+    "result": "passed",
+    "repo_name": null,
+    "hash": null,
+    "url": null,
+    "TestType": null,
+    "DerivationTechnique": null,
+    "result_text": "",
+    "PartiallyVerifies": null,
     "FullyVerifies": null
   },
   {
@@ -1262,7 +1290,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": "178",
+    "line": "227",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",
