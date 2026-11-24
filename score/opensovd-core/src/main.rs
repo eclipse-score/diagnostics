@@ -97,36 +97,6 @@ mod tests {
     use super::*;
     use opensovd_client::Client;
 
-    #[test]
-    fn default_url_uses_ipv4_loopback() {
-        const CHILD: &str = "SCORE_GATEWAY_DEFAULT_URL_TEST";
-        if std::env::var_os(CHILD).is_none() {
-            for value in [None, Some("http://[::1]:9000/env")] {
-                let mut command = std::process::Command::new(std::env::current_exe().expect("test executable"));
-                command.args(["--exact", "tests::default_url_uses_ipv4_loopback"]);
-                match value {
-                    Some(url) => { command.env(CHILD, url).env("SOVD_URL", url); },
-                    None => { command.env(CHILD, "default").env_remove("SOVD_URL"); },
-                }
-                let output = command.output().expect("run URL test");
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                assert!(output.status.success() && stdout.contains("1 passed"), "{stdout}");
-            }
-            return;
-        }
-        let options = opensovd_gateway::cli::try_parse_from(["opensovd-gateway"]).expect("options");
-        let expected = std::env::var(CHILD).expect("test mode");
-        let expected = if expected == "default" { "http://127.0.0.1:7690/sovd" } else { &expected };
-        assert_eq!(options.url, expected);
-        let options = opensovd_gateway::cli::try_parse_from([
-            "opensovd-gateway",
-            "--url",
-            "http://[::1]:8000/custom",
-        ])
-        .expect("explicit URL");
-        assert_eq!(options.url, "http://[::1]:8000/custom");
-    }
-
     // # verifies: comp_req__sovd_gateway__upstream_config
     #[test]
     fn upstream_configuration_accepts_mixed_urls_and_rejects_invalid_urls() {
@@ -145,14 +115,24 @@ mod tests {
 
     fn spawn_gateway(
         options: opensovd_gateway::cli::Cli,
-        listener: tokio::net::TcpListener,
         topology: Topology,
     ) -> tokio::task::JoinHandle<Result<(), String>> {
         tokio::spawn(async move {
-            opensovd_gateway::run_with_listener(options, topology, listener, std::future::pending())
+            opensovd_gateway::run_with_shutdown(options, topology, std::future::pending())
                 .await
                 .map_err(|error| format!("{error:#}"))
         })
+    }
+
+    /// The gateway binds its own port from the URL, so a free port is picked and released before it
+    /// starts. Another process can take it in between; the gateway then exits during startup and is
+    /// retried on a new port.
+    const START_ATTEMPTS: usize = 5;
+
+    fn free_address() -> std::net::SocketAddr {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .expect("pick test port")
     }
 
     async fn wait_for_ready(
@@ -180,20 +160,18 @@ mod tests {
 
     #[tokio::test(flavor = "current_thread")]
     async fn gateway_startup_errors_are_reported() {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("listener");
-        let address = listener.local_addr().expect("address");
+        let address = free_address();
+        let url = format!("http://{address}/sovd");
         let options = opensovd_gateway::cli::try_parse_from([
             "opensovd-gateway",
             "--url",
-            "http://127.0.0.1:0/sovd",
+            url.as_str(),
             "--cors-origin",
             "*",
             "--cors-credentials",
         ])
         .expect("options");
-        let mut task = spawn_gateway(options, listener, topology().await.expect("topology"));
+        let mut task = spawn_gateway(options, topology().await.expect("topology"));
         let client = Client::builder()
             .base_uri(&format!("http://{address}/sovd/v1"))
             .expect("URL")
@@ -206,27 +184,29 @@ mod tests {
     /// Runs the gateway on a free port of the loopback address with the extra `options`, such as
     /// `--upstream-url`, until the returned task is aborted.
     async fn serve(options: &[&str]) -> (tokio::task::JoinHandle<Result<(), String>>, Client) {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("listener");
-        let address = listener.local_addr().expect("address");
-        let url = format!("http://{address}/sovd");
-        let options = opensovd_gateway::cli::try_parse_from(
-            ["opensovd-gateway", "--url", url.as_str()]
-                .into_iter()
-                .chain(options.iter().copied()),
-        )
-        .expect("options");
-        let topology = topology().await.expect("topology");
-        let mut task = spawn_gateway(options, listener, topology);
-        let client = Client::builder()
-            .base_uri(&format!("{url}/v1"))
-            .expect("URL")
-            .timeout(Duration::from_secs(5))
-            .build()
-            .expect("client");
-        wait_for_ready(&mut task, &client).await.expect("gateway ready");
-        (task, client)
+        let mut last_error = String::new();
+        for _ in 0..START_ATTEMPTS {
+            let url = format!("http://{}/sovd", free_address());
+            let parsed = opensovd_gateway::cli::try_parse_from(
+                ["opensovd-gateway", "--url", url.as_str()]
+                    .into_iter()
+                    .chain(options.iter().copied()),
+            )
+            .expect("options");
+            let topology = topology().await.expect("topology");
+            let mut task = spawn_gateway(parsed, topology);
+            let client = Client::builder()
+                .base_uri(&format!("{url}/v1"))
+                .expect("URL")
+                .timeout(Duration::from_secs(5))
+                .build()
+                .expect("client");
+            match wait_for_ready(&mut task, &client).await {
+                Ok(()) => return (task, client),
+                Err(error) => last_error = error,
+            }
+        }
+        panic!("gateway did not start on any free port: {last_error}");
     }
 
     // # verifies: comp_req__uds_data_bridge__read_handlers, comp_req__uds_data_bridge__utf8_data, comp_req__sovd_gateway__hosted_entities

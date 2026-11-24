@@ -14,5 +14,4 @@ exports_files([
     "classic-diagnostic-adapter-export-requirements.patch",
     "opensovd-core-expose-client.patch",
     "opensovd-core-expose-deps.patch",
-    "opensovd-core-listener-default.patch",
 ])

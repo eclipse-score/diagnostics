@@ -22,7 +22,7 @@ it takes the options and `SOVD_*` environment variables of the reference gateway
 
 | Variable | Option | Meaning | Default |
 |---|---|---|---|
-| `SOVD_URL` | `--url` | Address, port and base path to serve on | `http://127.0.0.1:7690/sovd` |
+| `SOVD_URL` | `--url` | Address, port and base path to serve on | `http://localhost:7690/sovd` |
 | `SOVD_UPSTREAM_URL` | `--upstream-url` | The CDA to forward what the gateway does not host to: `http://<host>:<port>[<base path>]`, e.g. `http://127.0.0.1:20002/vehicle/v15`, or a Unix domain socket `unix:<socket>[:<base path>]`, e.g. `unix:///run/cda.sock:/vehicle/v15` | no forwarding |
 | `SOVD_MDNS` | `--mdns` | Announce the gateway via mDNS/DNS-SD with this vehicle identification, e.g. the VIN | no announcement |
 | `SOVD_MDNS_HOST` | `--mdns-host` | Host label of the announcement, published as `<host>.local` | derived from the identification |
