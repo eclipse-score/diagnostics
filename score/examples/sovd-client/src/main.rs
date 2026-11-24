@@ -13,12 +13,30 @@
 
 use opensovd_client::Client;
 use std::time::Duration;
+use tower::util::MapRequestLayer;
 use tracing_subscriber::EnvFilter;
 
 const DEFAULT_URL: &str = "http://127.0.0.1:7690/sovd/v1";
 
-fn connect(url: &str) -> Result<Client, opensovd_client::BuilderError> {
-    Client::builder().base_uri(url)?.timeout(Duration::from_secs(5)).build()
+fn connect(url: &str, token: Option<&str>) -> Result<Client, Box<dyn std::error::Error>> {
+    let authorization = token
+        .map(|token| {
+            let mut value = http::HeaderValue::from_str(&format!("Bearer {token}"))?;
+            value.set_sensitive(true);
+            Ok::<_, http::header::InvalidHeaderValue>(value)
+        })
+        .transpose()?;
+    let layer = MapRequestLayer::new(move |mut request: http::Request<_>| {
+        if let Some(value) = &authorization {
+            request.headers_mut().insert(http::header::AUTHORIZATION, value.clone());
+        }
+        request
+    });
+    Ok(Client::builder()
+        .base_uri(url)?
+        .timeout(Duration::from_secs(5))
+        .layer(layer)
+        .build()?)
 }
 
 fn init_tracing() {
@@ -90,7 +108,7 @@ mod tests {
             .build()
             .expect("server");
         let server_task = tokio::spawn(async move { server.serve().await });
-        let client = connect(&format!("http://{address}/sovd/v1")).expect("client");
+        let client = connect(&format!("http://{address}/sovd/v1"), None).expect("client");
         let result = run(&client).await;
         server_task.abort();
         let _ = server_task.await;
@@ -105,7 +123,7 @@ mod tests {
             let (_connection, _) = listener.accept().await.expect("accept connection");
             std::future::pending::<()>().await;
         });
-        let client = connect(&format!("http://{address}/sovd/v1")).expect("client");
+        let client = connect(&format!("http://{address}/sovd/v1"), None).expect("client");
         let result = tokio::time::timeout(Duration::from_secs(6), run(&client)).await;
         peer.abort();
         let _ = peer.await;
@@ -127,6 +145,54 @@ mod tests {
         assert!(!is_unsupported_collection(&server_error));
         assert!(!is_unsupported_collection(&timeout));
     }
+
+    #[test]
+    fn invalid_bearer_header_is_rejected() {
+        assert!(connect("http://localhost/sovd/v1", Some("invalid\ntoken")).is_err());
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn configured_client_sends_bearer_token() {
+        use opensovd_server::{Auth, AuthError, Authenticated, Authenticator, Parts, Principal};
+
+        struct TestToken;
+        impl Authenticator for TestToken {
+            fn authenticate(&self, parts: &Parts) -> Result<Option<Principal>, AuthError> {
+                if parts.headers.get(http::header::AUTHORIZATION).and_then(|v| v.to_str().ok())
+                    != Some("Bearer test-token")
+                {
+                    return Ok(None);
+                }
+                Ok(Some(Principal {
+                    subject: "test".into(),
+                    roles: Vec::new(),
+                    scopes: Vec::new(),
+                    claims: Default::default(),
+                }))
+            }
+        }
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
+        let address = listener.local_addr().expect("address");
+        let server = Server::builder()
+            .base_uri(format!("http://{address}/sovd"))
+            .expect("base URI")
+            .listener(listener)
+            .auth(Auth::new(TestToken, Authenticated))
+            .build()
+            .expect("server");
+        let task = tokio::spawn(async move { server.serve().await });
+        let url = format!("http://{address}/sovd/v1");
+        let unauthenticated = connect(&url, None).expect("client");
+        assert!(matches!(
+            unauthenticated.list_apps().send().await,
+            Err(opensovd_client::Error::ApiError { status, .. }) if status.as_u16() == 401
+        ));
+        let authenticated = connect(&url, Some("test-token")).expect("client");
+        assert!(authenticated.list_apps().send().await.is_ok());
+        task.abort();
+        let _ = task.await;
+    }
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -136,7 +202,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .or_else(|| std::env::var("SOVD_BASE_URL").ok())
         .unwrap_or_else(|| DEFAULT_URL.to_owned());
-    let client = connect(&url)?;
+    // The client's bearer credential: a JWT with `sub` and `exp` claims. The gateway has no token
+    // setting; it checks the token's shape (placeholder) or verifies it against its JWKS.
+    let token = std::env::var("SOVD_AUTH_TOKEN").ok();
+    let client = connect(&url, token.as_deref())?;
     run(&client).await?;
     Ok(())
 }

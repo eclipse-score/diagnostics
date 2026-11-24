@@ -25,6 +25,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 use tracing_subscriber::EnvFilter;
 
+mod auth;
 #[path = "../bridge/read_did.rs"]
 mod read_did;
 
@@ -76,6 +77,7 @@ async fn topology() -> Result<Topology, Box<dyn std::error::Error>> {
 async fn main() -> ExitCode {
     let options = opensovd_gateway::cli::parse();
     init_tracing();
+    let auth = auth::configured(&options);
     let topology = match topology().await {
         Ok(topology) => topology,
         Err(error) => {
@@ -83,7 +85,11 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         },
     };
-    match opensovd_gateway::run(options, topology).await {
+    let result = match auth {
+        Some(auth) => opensovd_gateway::run_with_auth(options, topology, auth).await,
+        None => opensovd_gateway::run(options, topology).await,
+    };
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             tracing::error!("{error:#}");
@@ -179,6 +185,39 @@ mod tests {
             .expect("client");
         let error = wait_for_ready(&mut task, &client).await.expect_err("invalid CORS");
         assert!(error.contains("credentials"), "{error}");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn gateway_shutdown_runners_preserve_startup_errors() {
+        for supplied_auth in [false, true] {
+            let options = opensovd_gateway::cli::try_parse_from([
+                "opensovd-gateway",
+                "--url",
+                "http://127.0.0.1:0/sovd",
+                "--cors-origin",
+                "*",
+                "--cors-credentials",
+            ])
+            .expect("options");
+            let result = tokio::time::timeout(Duration::from_secs(5), async move {
+                if supplied_auth {
+                    let auth = auth::configured(&options).expect("placeholder auth");
+                    opensovd_gateway::run_with_auth_and_shutdown(
+                        options,
+                        Topology::default(),
+                        auth,
+                        std::future::pending(),
+                    )
+                    .await
+                } else {
+                    opensovd_gateway::run_with_shutdown(options, Topology::default(), std::future::pending()).await
+                }
+            })
+            .await
+            .expect("runner must reject invalid CORS promptly");
+            let error = result.expect_err("invalid CORS");
+            assert!(error.to_string().contains("credentials"), "{error}");
+        }
     }
 
     /// Runs the gateway on a free port of the loopback address with the extra `options`, such as

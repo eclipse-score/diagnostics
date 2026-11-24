@@ -14,6 +14,11 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
+exports_files(
+    ["auth.rs"],
+    visibility = ["//score/opensovd-core:__pkg__"],
+)
+
 py_binary(
     name = "mdns_browse_client",
     testonly = True,

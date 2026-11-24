@@ -39,6 +39,7 @@ rust_binary(
     name = "opensovd-gateway",
     srcs = [
         "bridge/read_did.rs",
+        "src/auth.rs",
         "src/main.rs",
     ],
     # Not opensovd_gateway, the crate of the gateway of opensovd-core that this one runs.
@@ -49,11 +50,15 @@ rust_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":read_did_bridge",
+        "@opensovd_core//:axum",
+        "@opensovd_core//:jsonwebtoken",
         "@opensovd_core//:opensovd-core",
         # The gateway of opensovd-core: options, upstreams, authentication, TLS and mDNS.
         "@opensovd_core//:opensovd-gateway-lib",
         "@opensovd_core//:opensovd-models",
         "@opensovd_core//:opensovd-providers",
+        "@opensovd_core//:opensovd-server",
+        "@opensovd_core//:serde_json",
         "@opensovd_core//:tokio",
         "@opensovd_core//:tracing",
         "@opensovd_core//:tracing-subscriber",
@@ -85,6 +90,26 @@ rust_junit_test(
     sources = [
         "bridge/read_did.rs",
         "src/main.rs",
+    ],
+)
+
+rust_test(
+    name = "gateway_auth_test",
+    srcs = [
+        "src/auth.rs",
+        "//score/opensovd-core/tests:auth.rs",
+    ],
+    crate_root = "//score/opensovd-core/tests:auth.rs",
+    edition = "2021",
+    deps = [
+        "@opensovd_core//:axum",
+        "@opensovd_core//:jsonwebtoken",
+        "@opensovd_core//:opensovd-core",
+        "@opensovd_core//:opensovd-gateway-lib",
+        "@opensovd_core//:opensovd-models",
+        "@opensovd_core//:opensovd-server",
+        "@opensovd_core//:serde_json",
+        "@opensovd_core//:tokio",
     ],
 )
 
