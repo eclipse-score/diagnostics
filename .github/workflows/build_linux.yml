@@ -61,6 +61,9 @@ jobs:
           werror @score_baselibs//score/result:error 'any | not' \
             || { echo "-Werror applied to external repository compile actions"; exit 1; }
 
+      - name: Check downstream package loading
+        run: python3 tests/bzlmod_consumer_test.py
+
       - name: Bazel Build
         run: |
           read -r -a targets <<< "${BAZEL_BUILD_TARGETS}"
