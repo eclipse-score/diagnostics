@@ -77,17 +77,28 @@ fn runfile(path: &str) -> PathBuf {
         .unwrap_or_else(|| panic!("runfile not found: {path}"))
 }
 
-fn write_config(path: &Path, database: &Path, storage: &Path, socket: &Path) {
-    // Keep diagnostic communication disabled: discovery here only needs the loaded databases.
+/// Writes a CDA configuration that serves on `socket`. `doip` is the body of the `[doip]`
+/// section and `init_mode` the diagnostic communication mode.
+fn write_config(path: &Path, database: &Path, storage: &Path, socket: &Path, doip: &str, init_mode: &str) {
+    let [database, storage, socket] = [database, storage, socket].map(|path| path.display().to_string());
     let config = format!(
-        "[database]\ndir = {:?}\nexit_no_database_loaded = true\n\n\
-         [doip]\ntester_address = \"127.0.0.1\"\n\n\
-         [communication]\ninit_mode = \"Disabled\"\n\n\
-         [runtime_update_config]\nstorage_dir = {:?}\n\n\
-         [server]\ntransport = \"unix_socket\"\nunix_socket = {:?}\n",
-        database.display().to_string(),
-        storage.display().to_string(),
-        socket.display().to_string(),
+        r#"[database]
+dir = {database:?}
+exit_no_database_loaded = true
+
+[doip]
+{doip}
+
+[communication]
+init_mode = "{init_mode}"
+
+[runtime_update_config]
+storage_dir = {storage:?}
+
+[server]
+transport = "unix_socket"
+unix_socket = {socket:?}
+"#
     );
     fs::write(path, config).expect("write CDA config");
 }
@@ -214,7 +225,8 @@ async fn cda_serves_version_and_components() {
     fs::create_dir_all(&storage).expect("create storage directory");
 
     let socket = SocketFile::new();
-    write_config(&config, &database, &storage, &socket.0);
+    // Keep diagnostic communication disabled: discovery here only needs the loaded databases.
+    write_config(&config, &database, &storage, &socket.0, r#"tester_address = "127.0.0.1""#, "Disabled");
     let (mut child, client) = start_cda(&binary, &config, &socket.0).await.expect("CDA did not start");
     let upstream = format!("unix:{}:/vehicle/v15", socket.0.display());
 
@@ -471,4 +483,251 @@ async fn cda_serves_version_and_components() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(gateway.0.try_wait().expect("check gateway process").is_none());
+}
+
+/// The pinned Core client has no generic POST or DELETE. Use curl only for those
+/// methods, through the same gateway and bearer token; all reads use the Core client.
+#[cfg(feature = "ecu_simulator")]
+fn write_request(url: &str, token: &str, method: &str, body: Option<&serde_json::Value>, expected: u16) -> String {
+    assert!(matches!(method, "POST" | "DELETE"));
+    let mut command = Command::new("curl");
+    command.args([
+        "--silent", "--show-error", "--max-time", "10", "--request", method,
+        "--header", &format!("Authorization: Bearer {token}"),
+        "--header", "Content-Type: application/json", "--write-out", "\n%{http_code}",
+    ]);
+    if let Some(body) = body {
+        command.args(["--data-raw", &body.to_string()]);
+    }
+    let output = command.arg(url).output().expect("run curl for test-only write request");
+    assert!(output.status.success(), "curl failed: {}", String::from_utf8_lossy(&output.stderr));
+    let response = String::from_utf8(output.stdout).expect("UTF-8 response");
+    let (body, status) = response.rsplit_once('\n').expect("curl status");
+    assert_eq!(status.parse::<u16>().expect("HTTP status"), expected, "{method} {url}: {body}");
+    body.to_owned()
+}
+
+/// Calls the simulator's control API for the FLXC1000 ECU. This is fixture setup and
+/// inspection of the simulated ECU, not an SOVD request.
+#[cfg(feature = "ecu_simulator")]
+fn simulator_control(control: &str, method: &str, path: &str, body: Option<&serde_json::Value>) -> String {
+    let url = format!("{control}/FLXC1000{path}");
+    let mut command = Command::new("curl");
+    command.args(["--silent", "--show-error", "--fail", "--max-time", "10", "--request", method]);
+    if let Some(body) = body {
+        command.args(["--header", "Content-Type: application/json", "--data-raw", &body.to_string()]);
+    }
+    let output = command.arg(&url).output().expect("run curl for simulator control request");
+    assert!(output.status.success(), "{method} {url}: {}", String::from_utf8_lossy(&output.stderr));
+    String::from_utf8(output.stdout).expect("UTF-8 simulator response")
+}
+
+/// Reads a JSON resource of the simulator's control API.
+#[cfg(feature = "ecu_simulator")]
+fn simulator_state(control: &str, path: &str) -> serde_json::Value {
+    let body = simulator_control(control, "GET", path, None);
+    serde_json::from_str(&body).unwrap_or_else(|error| panic!("simulator {path} is not JSON ({error}): {body}"))
+}
+
+/// Checks that the simulated ECU received the UDS requests of every step, so a run
+/// that never reached the ECU cannot pass.
+#[cfg(feature = "ecu_simulator")]
+fn assert_recorded_requests(recorded: &serde_json::Value) {
+    let frames: Vec<String> = recorded
+        .as_array()
+        .expect("recorded requests")
+        .iter()
+        .map(|frame| frame.as_str().expect("recorded request").to_ascii_lowercase())
+        .collect();
+    // VIN read, clear all DTCs, routine stop, extended session, hard reset.
+    for exact in ["22f190", "14ffffff", "31021003", "1003", "1101"] {
+        assert!(frames.iter().any(|frame| frame == exact), "missing {exact}: {frames:?}");
+    }
+    // DTC list, snapshot and extended data reads, routine start.
+    for prefix in ["1902", "1904", "1906", "31011003"] {
+        assert!(frames.iter().any(|frame| frame.starts_with(prefix)), "missing {prefix}: {frames:?}");
+    }
+    // One RequestResults per observed result step.
+    let results = frames.iter().filter(|frame| *frame == "31031003").count();
+    assert_eq!(results, 4, "RequestResults count: {frames:?}");
+}
+
+/// Verifies live identification, fault details and clearing, routine results and
+/// stop, and ECU reset through the gateway and CDA against the simulated ECU, and
+/// checks the requests and final state the simulator recorded. Requires the
+/// separately provisioned simulator (`tests/ecu_sim_ci.sh`).
+// # verifies: comp_req__sovd_gateway__single_entry_point, comp_req__sovd_gateway__forwarding, comp_req__cda__faults, comp_req__cda__operations, comp_req__cda__lock_api, comp_req__cda__lock_enforcement, comp_req__cda__resource_mapping
+#[cfg(feature = "ecu_simulator")]
+#[tokio::test(flavor = "current_thread")]
+async fn simulator_reads_through_gateway() {
+    let tester_address = env::var("DIAGNOSTICS_TESTER_ADDRESS").expect("simulator tester address");
+    let _: std::net::Ipv4Addr = tester_address.parse().expect("IPv4 tester address");
+    let control = env::var("DIAGNOSTICS_SIMULATOR_CONTROL").expect("simulator control API URL");
+    // Values follow the pinned CDA's integration-tests/tests/sovd/faults.rs (Apache-2.0).
+    let seed = serde_json::json!({
+        "id": "01E240", "statusMask": "29", "emissionsRelated": false,
+        "snapshots": [{"recordNumber": "FE", "records": [{"did": "19FE", "data": "10111213"}]}],
+        "extendedData": [{"recordNumber": "FF", "data": "20212223"}],
+    });
+    simulator_control(&control, "PUT", "/dtc/Standard", Some(&seed));
+    simulator_control(&control, "POST", "/record", None);
+    let temp = test_dir();
+    let database = temp.0.join("database");
+    let storage = temp.0.join("storage");
+    fs::create_dir_all(&database).expect("create database directory");
+    fs::create_dir_all(&storage).expect("create storage directory");
+    for (source, name) in [
+        ("score/opensovd-cda/mdd/functional_groups.mdd", "functional_groups.mdd"),
+        ("classic-diagnostic-adapter+/testcontainer/odx/FLXC1000.mdd", "FLXC1000.mdd"),
+    ] {
+        fs::copy(runfile(source), database.join(name)).expect("copy MDD fixture");
+    }
+    let socket = SocketFile::new();
+    let config = temp.0.join("cda.toml");
+    let doip = format!(
+        r#"tester_address = {tester_address:?}
+tester_subnet = "255.255.0.0""#
+    );
+    write_config(&config, &database, &storage, &socket.0, &doip, "Always");
+    let (_cda, _) = start_cda(
+        &runfile("classic-diagnostic-adapter+/cda-main/opensovd-cda"),
+        &config,
+        &socket.0,
+    )
+    .await
+    .expect("CDA did not start");
+    let gateway = runfile("score/opensovd-core/opensovd-gateway");
+    let upstream = format!("unix:{}:/vehicle/v15", socket.0.display());
+    let mut started = None;
+    for _ in 0..START_ATTEMPTS {
+        if let Some(gateway) = start_gateway(&gateway, &upstream).await {
+            started = Some(gateway);
+            break;
+        }
+    }
+    let (_gateway, client, gateway_url, token) = started.expect("gateway did not start");
+    let vin = tokio::time::timeout(Duration::from_secs(90), async {
+        loop {
+            match client.component("flxc1000").data("vindataidentifier").read().send().await {
+                Ok(data) => break data,
+                Err(error) => {
+                    eprintln!("waiting for simulated ECU VIN: {error}");
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                }
+            }
+        }
+    })
+    .await
+    .expect("simulated ECU VIN did not become available");
+    assert_eq!(vin.data["VIN"].as_str(), Some("SCEDT26T8BD005261"), "{vin:?}");
+
+    // The fixture seeds this fault in the simulator, not in the CDA's database.
+    let faults: serde_json::Value = client.get("/components/flxc1000/faults", &[]).await.expect("read faults");
+    let listed = faults["items"].as_array().expect("fault collection");
+    assert!(listed.iter().any(|fault| fault["code"] == "01E240"), "{faults}");
+    let detail: serde_json::Value = client
+        .get("/components/flxc1000/faults/01E240", &[])
+        .await
+        .expect("read fault details");
+    assert_eq!(detail["item"]["code"], "01E240", "{detail}");
+    assert_eq!(detail["item"]["status"]["mask"], "29", "{detail}");
+    assert_eq!(detail["item"]["status"]["test_failed"], true, "{detail}");
+    let snapshots = &detail["environment_data"]["snapshots"]["data"]["FE"];
+    assert_eq!(snapshots["DTCSnapshotRecordNumberOfIdentifiers"], 1, "{detail}");
+    assert_eq!(snapshots["DTCSnapshotRecord"][0]["DTCSnapshotRecordDid"], 0x19FE, "{detail}");
+    assert_eq!(snapshots["DTCSnapshotRecord"][0]["DTCSnapshotRecordDidData"], 0x10111213, "{detail}");
+    assert_eq!(
+        detail["environment_data"]["extended_data_records"]["data"]["FF"]["DefaultTestExtDataStruct"]
+            ["DTCExtDataRecordData"],
+        0x20212223,
+        "{detail}"
+    );
+
+    let root = format!("{gateway_url}/components/flxc1000");
+    let lock_url = format!("{root}/locks");
+    write_request(&format!("{root}/faults"), &token, "DELETE", None, 409);
+    let unchanged: serde_json::Value = client
+        .get("/components/flxc1000/faults/01E240", &[])
+        .await
+        .expect("fault survives rejected clear");
+    assert_eq!(unchanged["item"]["status"]["test_failed"], true, "{unchanged}");
+    let lock_body = write_request(&lock_url, &token, "POST", Some(&serde_json::json!({"lock_expiration": 300})), 201);
+    let lock: serde_json::Value = serde_json::from_str(&lock_body).expect("lock JSON");
+    let lock_id = lock["id"].as_str().expect("lock id");
+    let lock_path = format!("/components/flxc1000/locks/{lock_id}");
+    let acquired: serde_json::Value = client.get(&lock_path, &[]).await.expect("read acquired lock");
+    assert_eq!(acquired["owned"], true, "{acquired}");
+
+    write_request(&format!("{root}/faults"), &token, "DELETE", None, 204);
+    let cleared: serde_json::Value = client.get("/components/flxc1000/faults", &[]).await.expect("read cleared faults");
+    assert!(
+        !cleared["items"].as_array().expect("fault collection").iter().any(|fault| {
+            fault["code"] == "01E240" && fault["status"]["test_failed"] == true
+        }),
+        "seeded fault still failed after clear: {cleared}"
+    );
+
+    // The pinned CDA's integration-tests/tests/sovd/operations.rs describes this simulator routine.
+    let execution_path = "/components/flxc1000/operations/timecircuits/executions";
+    let execution_url = format!("{gateway_url}{execution_path}");
+    let started = write_request(
+        &execution_url, &token, "POST",
+        Some(&serde_json::json!({"parameters":{"travelMethod":"PresentDay","travelMethodData":{}}})), 202,
+    );
+    let started: serde_json::Value = serde_json::from_str(&started).expect("execution JSON");
+    assert_eq!(started["status"], "running", "{started}");
+    let id = started["id"].as_str().expect("execution id");
+    let execution = format!("{execution_path}/{id}");
+    let running: serde_json::Value = client
+        .get(&execution, &[("x-sovd2uds-suppressService", "true")])
+        .await
+        .expect("read running execution");
+    assert_eq!(running["status"], "running", "{running}");
+    for (percent, step) in [(25, "Accelerating"), (50, "TemporalDisplacement"), (75, "Arrived"), (100, "Arrived")] {
+        let result: serde_json::Value = client.get(&execution, &[]).await.expect("observe routine result");
+        // This CDA marks every positive RequestResults response completed, even at 25%.
+        assert_eq!(result["status"], "completed", "{result}");
+        assert_eq!(result["parameters"]["percentComplete"], percent, "{result}");
+        assert_eq!(result["parameters"]["step"], step, "{result}");
+        if percent >= 75 {
+            assert_eq!(result["parameters"]["message"], "Great Scott! We made it!", "{result}");
+        }
+    }
+    let stopped = write_request(&format!("{gateway_url}{execution}"), &token, "DELETE", None, 200);
+    let stopped: serde_json::Value = serde_json::from_str(&stopped).expect("stopped execution JSON");
+    assert_eq!(stopped["status"], "stopped", "{stopped}");
+    let error = client.get::<serde_json::Value>(&execution, &[]).await.expect_err("stopped execution removed");
+    assert!(
+        matches!(error, opensovd_client::Error::ApiError { status, .. } if status == http::StatusCode::NOT_FOUND),
+        "{error:?}"
+    );
+
+    // A hard reset must actually change an extended session back to default.
+    client.put("/components/flxc1000/modes/session", &[], &serde_json::json!({"value":"extended"}))
+        .await.expect("enter extended session");
+    let session: serde_json::Value = client
+        .get("/components/flxc1000/modes/session", &[])
+        .await
+        .expect("read extended session");
+    assert_eq!(session["value"].as_str().map(str::to_ascii_lowercase).as_deref(), Some("extended"), "{session}");
+    write_request(
+        &format!("{root}/operations/reset/executions"),
+        &token,
+        "POST",
+        Some(&serde_json::json!({"parameters":{"value":"hardreset"}})),
+        204,
+    );
+    let session: serde_json::Value = client
+        .get("/components/flxc1000/modes/session", &[])
+        .await
+        .expect("read reset session");
+    assert_eq!(session["value"].as_str().map(str::to_ascii_lowercase).as_deref(), Some("default"), "{session}");
+    write_request(&format!("{lock_url}/{lock_id}"), &token, "DELETE", None, 204);
+
+    // The simulated ECU itself must show the effect of every step.
+    assert_recorded_requests(&simulator_state(&control, "/record"));
+    let dtcs = simulator_state(&control, "/dtc/Standard");
+    assert_eq!(dtcs, serde_json::json!([]), "fault memory not cleared");
+    let state = simulator_state(&control, "/state");
+    assert_eq!(state["sessionState"], "DEFAULT", "ECU state after reset: {state}");
 }

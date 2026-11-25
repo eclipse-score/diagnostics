@@ -55,6 +55,10 @@ jobs:
       - name: Bazel Test
         run: bazel test --config=score_diag_x86_64_linux -- //examples/... //tests/... //score/...
 
+      - name: Test simulated ECU through the gateway
+        timeout-minutes: 60
+        run: score/opensovd-cda/tests/ecu_sim_ci.sh
+
       - name: Collect test reports
         if: always()
         run: |

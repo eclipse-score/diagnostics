@@ -212,6 +212,23 @@ that the integration tests of the CDA make for them (`ignore_protocol`, the logi
 addresses, com-params): `score/opensovd-cda/cda-ecu-sim.toml` has exactly those and nothing else.
 A consumer appends it to its own CDA configuration, which sets the paths, address and port.
 
+The `On PR` workflow also runs `score/opensovd-cda/tests/ecu_sim_ci.sh`. It starts the `ecu-sim`
+service of the pinned CDA's `testcontainer/docker-compose.yml` and runs
+`//score/opensovd-cda:simulator_test`, whose JUnit report reaches the documentation's
+`test-reports`. The test seeds a fault through the simulator's control API, checks a live VIN,
+faults with snapshot and extended data, clear, routine lifecycle and hard reset through the gateway,
+and finally checks the diagnostic requests the simulator recorded and its final state, so an empty
+run cannot pass and any failure is in the report. The Core client performs GET and PUT requests; a
+test-only `curl` helper performs POST and DELETE, which the pinned client does not expose. It needs
+Linux, Docker Compose, `curl` and `iproute2`. It is meant for a throwaway CI runner: like upstream,
+the simulator runs privileged on the fixed network `172.42.0.0/16` and publishes its control port
+8181 on the host. The regular Bazel tests remain bus-free: only the manual `simulator_test_binary`
+target enables the `ecu_simulator` Rust feature.
+
+Seeding through the simulator control API is fixture setup, not an SOVD operation.
+The pinned CDA reports an execution as `completed` after each positive RequestResults response,
+even while the TimeCircuits result still reports less than 100% progress; the test checks both.
+
 ### Patches
 
 This repository maintains local patches for upstream dependencies:

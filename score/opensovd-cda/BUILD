@@ -41,18 +41,30 @@ _INTEGRATION_DATA = [
     "@classic-diagnostic-adapter//testcontainer/odx:mdd",
 ]
 
+_INTEGRATION_DEPS = [
+    "@opensovd_core//:http",
+    "@opensovd_core//:opensovd-client",
+    "@opensovd_core//:serde_json",
+    "@opensovd_core//:tokio",
+    "@opensovd_core//:tower",
+]
+
 rust_test(
     name = "integration_test_binary",
     srcs = ["tests/integration.rs"],
     data = _INTEGRATION_DATA,
     tags = ["manual"],
-    deps = [
-        "@opensovd_core//:http",
-        "@opensovd_core//:opensovd-client",
-        "@opensovd_core//:serde_json",
-        "@opensovd_core//:tokio",
-        "@opensovd_core//:tower",
-    ],
+    deps = _INTEGRATION_DEPS,
+)
+
+# Only the explicitly provisioned simulator fixture enables diagnostic bus tests.
+rust_test(
+    name = "simulator_test_binary",
+    srcs = ["tests/integration.rs"],
+    crate_features = ["ecu_simulator"],
+    data = _INTEGRATION_DATA,
+    tags = ["manual"],
+    deps = _INTEGRATION_DEPS,
 )
 
 # The ECU databases (MDD) of the CDA's ECU simulator, for an image that runs the CDA against it.
@@ -77,6 +89,15 @@ rust_junit_test(
     test = ":integration_test_binary",
     sources = ["tests/integration.rs"],
     data = _INTEGRATION_DATA,
+)
+
+# Runs only with the simulator that tests/ecu_sim_ci.sh provisions, which also runs this target.
+rust_junit_test(
+    name = "simulator_test",
+    test = ":simulator_test_binary",
+    sources = ["tests/integration.rs"],
+    data = _INTEGRATION_DATA,
+    tags = ["manual"],
 )
 
 py_binary(

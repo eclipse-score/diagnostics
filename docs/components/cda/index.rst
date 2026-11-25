@@ -41,8 +41,8 @@ Motivation and Rationale
 
 The CDA is specified and developed in https://github.com/eclipse-opensovd/classic-diagnostic-adapter. Its
 requirements are built from the pinned CDA sources (``//score/opensovd-cda:needs_json``) and referenced
-directly. The requirements below only name the CDA requirements that the v1.0 integration relies on and trace
-them to :need:`feat_req__diagnostics__classic_adapter`, without repeating them.
+directly. The requirements below state the CDA behavior that the v1.0 integration relies on, refine the
+upstream CDA requirement they come from, and trace them to :need:`feat_req__diagnostics__classic_adapter`.
 
 Component
 =========
@@ -59,6 +59,12 @@ Component
 Specification
 =============
 
-Content and acceptance criteria are those of the referenced CDA requirement.
+Each requirement states the behavior the integration relies on; the refined CDA requirement gives the full
+upstream specification.
 
 * :need:`comp_req__cda__http_server_port`
+* :need:`comp_req__cda__faults`
+* :need:`comp_req__cda__operations`
+* :need:`comp_req__cda__lock_api`
+* :need:`comp_req__cda__lock_enforcement`
+* :need:`comp_req__cda__resource_mapping`
