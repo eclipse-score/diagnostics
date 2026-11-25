@@ -1290,7 +1290,7 @@
   {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": "202",
+    "line": "213",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",

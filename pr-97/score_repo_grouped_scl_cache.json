@@ -371,7 +371,7 @@
             {
               "name": "cda_serves_version_and_components",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 202,
+              "line": 213,
               "need": "comp_req__sovd_gateway__single_entry_point",
               "verify_type": "partially",
               "result": "passed",
@@ -388,7 +388,7 @@
             {
               "name": "cda_serves_version_and_components",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 202,
+              "line": 213,
               "need": "comp_req__sovd_gateway__forwarding",
               "verify_type": "partially",
               "result": "passed",
@@ -405,7 +405,7 @@
             {
               "name": "cda_serves_version_and_components",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 202,
+              "line": 213,
               "need": "comp_req__sovd_gateway__merged_discovery",
               "verify_type": "partially",
               "result": "passed",
@@ -422,7 +422,7 @@
             {
               "name": "cda_serves_version_and_components",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 202,
+              "line": 213,
               "need": "comp_req__sovd_gateway__reference_rewrite",
               "verify_type": "partially",
               "result": "passed",
