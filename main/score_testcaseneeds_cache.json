@@ -1288,9 +1288,23 @@
     "FullyVerifies": null
   },
   {
+    "name": "simulator_reads_through_gateway",
+    "file": "score/opensovd-cda/tests/integration.rs",
+    "line": "562",
+    "result": "passed",
+    "repo_name": "local_repo",
+    "hash": "",
+    "url": "",
+    "TestType": "requirements-based",
+    "DerivationTechnique": "requirements-analysis",
+    "result_text": "",
+    "PartiallyVerifies": "comp_req__sovd_gateway__single_entry_point,comp_req__sovd_gateway__forwarding,comp_req__cda__faults,comp_req__cda__operations,comp_req__cda__lock_api,comp_req__cda__lock_enforcement,comp_req__cda__resource_mapping",
+    "FullyVerifies": null
+  },
+  {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": "202",
+    "line": "213",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",

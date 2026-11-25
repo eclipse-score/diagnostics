@@ -501,9 +501,53 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="requirements">
+  
+<style>
+.score-testcase-result {
+  font-weight: bold;
+}
+.score-testcase-result--passed {
+  color: #146c2e;
+}
+.score-testcase-result--failed {
+  color: #b42318;
+}
+.score-testcase-result--skipped {
+  color: #8a5300;
+}
+.score-testcase-result--disabled {
+  color: #5f6368;
+}
+html[data-theme="dark"] .score-testcase-result--passed {
+  color: #7ee787;
+}
+html[data-theme="dark"] .score-testcase-result--failed {
+  color: #ff7b72;
+}
+html[data-theme="dark"] .score-testcase-result--skipped {
+  color: #d29922;
+}
+html[data-theme="dark"] .score-testcase-result--disabled {
+  color: #c4cad2;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) .score-testcase-result--passed {
+    color: #7ee787;
+  }
+  html:not([data-theme="light"]) .score-testcase-result--failed {
+    color: #ff7b72;
+  }
+  html:not([data-theme="light"]) .score-testcase-result--skipped {
+    color: #d29922;
+  }
+  html:not([data-theme="light"]) .score-testcase-result--disabled {
+    color: #c4cad2;
+  }
+}
+</style>
+<section id="requirements">
 <span id="classic-diagnostic-adapter-requirements"></span><h1>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h1>
-<div class="need_container docutils container" id="SNCB-57de7706">
+<div class="need_container docutils container" id="SNCB-a536b8bc">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_document table" id="doc__classic_diagnostic_adapter_requirements">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -549,7 +593,7 @@
 </div>
 <section id="functional-requirements">
 <h2>Functional Requirements<a class="headerlink" href="#functional-requirements" title="Link to this heading">#</a></h2>
-<div class="need_container docutils container" id="SNCB-e163b94d">
+<div class="need_container docutils container" id="SNCB-00f87b4d">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__http_server_port">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -578,10 +622,281 @@
 </td>
 <td class="meta" colspan="3"></td>
 </tr>
-<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall fulfil <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-http-server-port">req~sovd-api-http-server-port</a>.</p></td>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall serve its SOVD API on the HTTP or HTTPS port set in its configuration.</p>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-http-server-port">req~sovd-api-http-server-port</a>.</p>
+</td>
 </tr>
 <tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
 <div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__http_server_port" title="comp_req__cda__http_server_port">comp_req__cda__http_server_port</a></span></span></div>
+</div>
+</td>
+<td class="footer" colspan="2"><div class="needs_footer line-block">
+<div class="line"><span><span class="needs_type_name"><span class="needs_data">Component Requirement</span></span></span></div>
+</div>
+</td>
+<td class="footer_right" colspan="2"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="need_container docutils container" id="SNCB-b8dcef7e">
+<div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__faults">
+<tbody>
+<tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
+<div class="line"><span><span class="needs_title"><span class="needs_data">CDA Faults Endpoint</span></span></span></div>
+</div>
+</td>
+<td class="head_center" colspan="2"><div class="needs_head line-block">
+<div class="line"><span><span class="needs_status"><span class="needs_label">status: </span><span class="needs_data">valid</span></span></span></div>
+<div class="line"><span><span class="needs_security"><span class="needs_label">security: </span><span class="needs_data">YES</span></span></span></div>
+<div class="line"><span><span class="needs_safety"><span class="needs_label">safety: </span><span class="needs_data">QM</span></span></span></div>
+</div>
+</td>
+<td class="head_right" colspan="2"><div class="needs_head_right line-block">
+<div class="line"><span><span class="needs needs_collapse" id="target__show__meta"><span class="needs collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-down-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg></span><span class="needs visible collapse_is_hidden"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></span></span></div>
+</div>
+</td>
+</tr>
+<tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
+<div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Interface</span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/be063fe706ace766c7eee882e3888497b8b728ae/score/opensovd-cda/tests/integration.rs#L562">simulator_reads_through_gateway<span class="score-testcase-result score-testcase-result--passed"> (passed)</span></a></span></span></div>
+<div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
+</span></span></div>
+<div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
+<div class="line">satisfied by: <span class="satisfied_by"><span><a class="reference internal" href="../index.html#comp__classic_diagnostic_adapter" title="comp_req__cda__faults">comp__classic_diagnostic_adapter</a></span></span></div>
+</span></div>
+</div>
+</td>
+<td class="meta" colspan="3"></td>
+</tr>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall, for each ECU:</p>
+<ul class="simple">
+<li><p>list the ECU’s faults (DTCs) with their codes and status at <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/components/{ecu}/faults</span></code>,</p></li>
+<li><p>return a fault with its status bits, snapshot records and extended data records at
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/components/{ecu}/faults/{code}</span></code>,</p></li>
+<li><p>clear the ECU’s fault memory at <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/components/{ecu}/faults</span></code>.</p></li>
+</ul>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-faults-endpoint">req~sovd-api-faults-endpoint</a>.</p>
+</td>
+</tr>
+<tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
+<div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__faults" title="comp_req__cda__faults">comp_req__cda__faults</a></span></span></div>
+</div>
+</td>
+<td class="footer" colspan="2"><div class="needs_footer line-block">
+<div class="line"><span><span class="needs_type_name"><span class="needs_data">Component Requirement</span></span></span></div>
+</div>
+</td>
+<td class="footer_right" colspan="2"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="need_container docutils container" id="SNCB-f8f35cf2">
+<div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__operations">
+<tbody>
+<tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
+<div class="line"><span><span class="needs_title"><span class="needs_data">CDA Asynchronous Operations</span></span></span></div>
+</div>
+</td>
+<td class="head_center" colspan="2"><div class="needs_head line-block">
+<div class="line"><span><span class="needs_status"><span class="needs_label">status: </span><span class="needs_data">valid</span></span></span></div>
+<div class="line"><span><span class="needs_security"><span class="needs_label">security: </span><span class="needs_data">YES</span></span></span></div>
+<div class="line"><span><span class="needs_safety"><span class="needs_label">safety: </span><span class="needs_data">QM</span></span></span></div>
+</div>
+</td>
+<td class="head_right" colspan="2"><div class="needs_head_right line-block">
+<div class="line"><span><span class="needs needs_collapse" id="target__show__meta"><span class="needs collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-down-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg></span><span class="needs visible collapse_is_hidden"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></span></span></div>
+</div>
+</td>
+</tr>
+<tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
+<div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/be063fe706ace766c7eee882e3888497b8b728ae/score/opensovd-cda/tests/integration.rs#L562">simulator_reads_through_gateway<span class="score-testcase-result score-testcase-result--passed"> (passed)</span></a></span></span></div>
+<div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
+</span></span></div>
+<div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
+<div class="line">satisfied by: <span class="satisfied_by"><span><a class="reference internal" href="../index.html#comp__classic_diagnostic_adapter" title="comp_req__cda__operations">comp__classic_diagnostic_adapter</a></span></span></div>
+</span></div>
+</div>
+</td>
+<td class="meta" colspan="3"></td>
+</tr>
+<tr class="content row-odd"><td class="content" colspan="6"><p>For an ECU routine that defines the <code class="docutils literal notranslate"><span class="pre">RequestResults</span></code> and <code class="docutils literal notranslate"><span class="pre">Stop</span></code> subfunctions, the classic diagnostic
+adapter shall:</p>
+<ul class="simple">
+<li><p>start the routine at <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/components/{ecu}/operations/{op}/executions</span></code> and answer with an execution
+ID and the status <code class="docutils literal notranslate"><span class="pre">running</span></code>,</p></li>
+<li><p>request and return the routine’s results at <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/components/{ecu}/operations/{op}/executions/{id}</span></code>,</p></li>
+<li><p>stop the routine at <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/components/{ecu}/operations/{op}/executions/{id}</span></code>, answer with HTTP 200,
+the status <code class="docutils literal notranslate"><span class="pre">stopped</span></code> and the Stop result when the ECU returns output data, or with HTTP 204 when it
+returns none, and answer later requests for that execution with HTTP 404.</p></li>
+</ul>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-operations-handling">req~sovd-api-operations-handling</a>.</p>
+</td>
+</tr>
+<tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
+<div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__operations" title="comp_req__cda__operations">comp_req__cda__operations</a></span></span></div>
+</div>
+</td>
+<td class="footer" colspan="2"><div class="needs_footer line-block">
+<div class="line"><span><span class="needs_type_name"><span class="needs_data">Component Requirement</span></span></span></div>
+</div>
+</td>
+<td class="footer_right" colspan="2"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="need_container docutils container" id="SNCB-b49316a1">
+<div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__lock_api">
+<tbody>
+<tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
+<div class="line"><span><span class="needs_title"><span class="needs_data">CDA ECU Lock</span></span></span></div>
+</div>
+</td>
+<td class="head_center" colspan="2"><div class="needs_head line-block">
+<div class="line"><span><span class="needs_status"><span class="needs_label">status: </span><span class="needs_data">valid</span></span></span></div>
+<div class="line"><span><span class="needs_security"><span class="needs_label">security: </span><span class="needs_data">YES</span></span></span></div>
+<div class="line"><span><span class="needs_safety"><span class="needs_label">safety: </span><span class="needs_data">QM</span></span></span></div>
+</div>
+</td>
+<td class="head_right" colspan="2"><div class="needs_head_right line-block">
+<div class="line"><span><span class="needs needs_collapse" id="target__show__meta"><span class="needs collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-down-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg></span><span class="needs visible collapse_is_hidden"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></span></span></div>
+</div>
+</td>
+</tr>
+<tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
+<div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Interface</span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/be063fe706ace766c7eee882e3888497b8b728ae/score/opensovd-cda/tests/integration.rs#L562">simulator_reads_through_gateway<span class="score-testcase-result score-testcase-result--passed"> (passed)</span></a></span></span></div>
+<div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
+</span></span></div>
+<div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
+<div class="line">satisfied by: <span class="satisfied_by"><span><a class="reference internal" href="../index.html#comp__classic_diagnostic_adapter" title="comp_req__cda__lock_api">comp__classic_diagnostic_adapter</a></span></span></div>
+</span></div>
+</div>
+</td>
+<td class="meta" colspan="3"></td>
+</tr>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall let a client acquire a lock on an ECU at
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/components/{ecu}/locks</span></code> with a lock expiration, answer with the lock’s ID, report the lock as
+owned by that client at <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/components/{ecu}/locks/{id}</span></code>, and release it at
+<code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/components/{ecu}/locks/{id}</span></code>.</p>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-lock-api">req~sovd-api-lock-api</a>.</p>
+</td>
+</tr>
+<tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
+<div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__lock_api" title="comp_req__cda__lock_api">comp_req__cda__lock_api</a></span></span></div>
+</div>
+</td>
+<td class="footer" colspan="2"><div class="needs_footer line-block">
+<div class="line"><span><span class="needs_type_name"><span class="needs_data">Component Requirement</span></span></span></div>
+</div>
+</td>
+<td class="footer_right" colspan="2"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="need_container docutils container" id="SNCB-08fad180">
+<div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__lock_enforcement">
+<tbody>
+<tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
+<div class="line"><span><span class="needs_title"><span class="needs_data">CDA ECU Lock Enforcement</span></span></span></div>
+</div>
+</td>
+<td class="head_center" colspan="2"><div class="needs_head line-block">
+<div class="line"><span><span class="needs_status"><span class="needs_label">status: </span><span class="needs_data">valid</span></span></span></div>
+<div class="line"><span><span class="needs_security"><span class="needs_label">security: </span><span class="needs_data">YES</span></span></span></div>
+<div class="line"><span><span class="needs_safety"><span class="needs_label">safety: </span><span class="needs_data">QM</span></span></span></div>
+</div>
+</td>
+<td class="head_right" colspan="2"><div class="needs_head_right line-block">
+<div class="line"><span><span class="needs needs_collapse" id="target__show__meta"><span class="needs collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-down-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg></span><span class="needs visible collapse_is_hidden"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></span></span></div>
+</div>
+</td>
+</tr>
+<tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
+<div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Functional</span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/be063fe706ace766c7eee882e3888497b8b728ae/score/opensovd-cda/tests/integration.rs#L562">simulator_reads_through_gateway<span class="score-testcase-result score-testcase-result--passed"> (passed)</span></a></span></span></div>
+<div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
+</span></span></div>
+<div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
+<div class="line">satisfied by: <span class="satisfied_by"><span><a class="reference internal" href="../index.html#comp__classic_diagnostic_adapter" title="comp_req__cda__lock_enforcement">comp__classic_diagnostic_adapter</a></span></span></div>
+</span></div>
+</div>
+</td>
+<td class="meta" colspan="3"></td>
+</tr>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall reject a write request to an ECU, such as clearing its faults, with
+HTTP 409 and leave the ECU unchanged when no lock is held on the ECU, and shall execute the request when
+the client holds a lock on the ECU.</p>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-lock-ecu-enforcement">req~sovd-api-lock-ecu-enforcement</a>.</p>
+</td>
+</tr>
+<tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
+<div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__lock_enforcement" title="comp_req__cda__lock_enforcement">comp_req__cda__lock_enforcement</a></span></span></div>
+</div>
+</td>
+<td class="footer" colspan="2"><div class="needs_footer line-block">
+<div class="line"><span><span class="needs_type_name"><span class="needs_data">Component Requirement</span></span></span></div>
+</div>
+</td>
+<td class="footer_right" colspan="2"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="need_container docutils container" id="SNCB-61f114a2">
+<div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__cda__resource_mapping">
+<tbody>
+<tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
+<div class="line"><span><span class="needs_title"><span class="needs_data">CDA UDS Service Mapping</span></span></span></div>
+</div>
+</td>
+<td class="head_center" colspan="2"><div class="needs_head line-block">
+<div class="line"><span><span class="needs_status"><span class="needs_label">status: </span><span class="needs_data">valid</span></span></span></div>
+<div class="line"><span><span class="needs_security"><span class="needs_label">security: </span><span class="needs_data">YES</span></span></span></div>
+<div class="line"><span><span class="needs_safety"><span class="needs_label">safety: </span><span class="needs_data">QM</span></span></span></div>
+</div>
+</td>
+<td class="head_right" colspan="2"><div class="needs_head_right line-block">
+<div class="line"><span><span class="needs needs_collapse" id="target__show__meta"><span class="needs collapsed"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-down-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg></span><span class="needs visible collapse_is_hidden"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right-circle"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg></span></span></span></div>
+</div>
+</td>
+</tr>
+<tr class="meta row-even"><td class="meta" colspan="3"><div class="needs_meta_left line-block">
+<div class="line"><span><span><div class="line"><span class="needs_reqtype"><span class="needs_label">reqtype: </span><span class="needs_data">Interface</span></span></div>
+<div class="line"><span class="needs_testlink"><span class="needs_label">testlink: </span><span class="needs_data"><a class="reference external" href="https://github.com/eclipse-score/diagnostics/blob/be063fe706ace766c7eee882e3888497b8b728ae/score/opensovd-cda/tests/integration.rs#L562">simulator_reads_through_gateway<span class="score-testcase-result score-testcase-result--passed"> (passed)</span></a></span></span></div>
+<div class="line"><span class="needs_version"><span class="needs_label">version: </span>1</span></div>
+</span></span></div>
+<div class="line"><span><div class="line">derived from: <span class="derived_from"><span><a class="external_link reference external" href="https://eclipse-score.github.io/score/main/features/diagnostics/requirements/index.html#feat_req__diagnostics__classic_adapter">feat_req__diagnostics__classic_adapter</a></span></span></div>
+<div class="line">satisfied by: <span class="satisfied_by"><span><a class="reference internal" href="../index.html#comp__classic_diagnostic_adapter" title="comp_req__cda__resource_mapping">comp__classic_diagnostic_adapter</a></span></span></div>
+</span></div>
+</div>
+</td>
+<td class="meta" colspan="3"></td>
+</tr>
+<tr class="content row-odd"><td class="content" colspan="6"><p>The classic diagnostic adapter shall translate the following SOVD resources of an ECU into the UDS
+services of that ECU:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/data/{data-identifier}</span></code> reads to ReadDataByIdentifier (SID 22<sub>16</sub>),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/faults</span></code> reads to ReadDTCInformation (SID 19<sub>16</sub>) and clearing to ClearDiagnosticInformation
+(SID 14<sub>16</sub>),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/modes/session</span></code> updates to DiagnosticSessionControl (SID 10<sub>16</sub>),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/operations/reset</span></code> executions to ECUReset (SID 11<sub>16</sub>),</p></li>
+<li><p>other <code class="docutils literal notranslate"><span class="pre">/operations/{op}</span></code> executions to RoutineControl (SID 31<sub>16</sub>).</p></li>
+</ul>
+<p>Refines <a class="external_link reference external" href="https://eclipse-opensovd.github.io/classic-diagnostic-adapter/02_requirements/02_sovd.html#req~sovd-api-standardized-resource-collection-mapping">req~sovd-api-standardized-resource-collection-mapping</a>.</p>
+</td>
+</tr>
+<tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
+<div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__cda__resource_mapping" title="comp_req__cda__resource_mapping">comp_req__cda__resource_mapping</a></span></span></div>
 </div>
 </td>
 <td class="footer" colspan="2"><div class="needs_footer line-block">
