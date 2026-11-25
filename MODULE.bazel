@@ -81,7 +81,6 @@ python.toolchain(
 pip = use_extension(
     "@rules_python//python/extensions:pip.bzl",
     "pip",
-    dev_dependency = True,
 )
 pip.parse(
     envsubst = ["PIP_INDEX_URL"],

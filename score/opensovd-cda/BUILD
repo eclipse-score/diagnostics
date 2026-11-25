@@ -109,10 +109,10 @@ py_binary(
     ],
 )
 
-# CDA requirements at the pinned commit, for docs() in //:BUILD.
+# CDA requirements at the pinned commit, for this module and downstream docs.
 cda_needs_json(
     name = "needs_json",
     srcs = ["@classic-diagnostic-adapter//:requirements_docs"],
     project_url = "https://eclipse-opensovd.github.io/classic-diagnostic-adapter",
-    visibility = ["//:__pkg__"],
+    visibility = ["//visibility:public"],
 )
