@@ -1290,7 +1290,7 @@
   {
     "name": "simulator_reads_through_gateway",
     "file": "score/opensovd-cda/tests/integration.rs",
-    "line": "516",
+    "line": "562",
     "result": "passed",
     "repo_name": "local_repo",
     "hash": "",

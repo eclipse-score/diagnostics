@@ -371,7 +371,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__sovd_gateway__single_entry_point",
               "verify_type": "partially",
               "result": "passed",
@@ -397,7 +397,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__sovd_gateway__forwarding",
               "verify_type": "partially",
               "result": "passed",
@@ -423,7 +423,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__cda__faults",
               "verify_type": "partially",
               "result": "passed",
@@ -440,7 +440,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__cda__operations",
               "verify_type": "partially",
               "result": "passed",
@@ -457,7 +457,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__cda__lock_api",
               "verify_type": "partially",
               "result": "passed",
@@ -474,7 +474,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__cda__lock_enforcement",
               "verify_type": "partially",
               "result": "passed",
@@ -491,7 +491,7 @@
             {
               "name": "simulator_reads_through_gateway",
               "file": "score/opensovd-cda/tests/integration.rs",
-              "line": 516,
+              "line": 562,
               "need": "comp_req__cda__resource_mapping",
               "verify_type": "partially",
               "result": "passed",
