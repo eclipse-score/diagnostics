@@ -40,15 +40,15 @@ dash_license_checker(
 )
 
 docs(
-    data = [
-        "//score/opensovd-cda:needs_json",
-        "@score_platform//:needs_json",
-        "@score_process//:needs_json",
+    code_targets = [
+        "//score/opensovd-core:requirement_sources",
     ],
     # ide_support also supplies the Python environment used by BasedPyright.
     deps = ["@gateway_test_deps//zeroconf"],
-    scan_code = [
-        "//score/opensovd-core:requirement_sources",
+    external_needs = [
+        "//score/opensovd-cda:needs_json",
+        "@score_platform//:needs_json_file",
+        "@score_process_description//:needs_json_file",
     ],
     source_dir = "docs",
 )

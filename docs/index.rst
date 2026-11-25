@@ -83,6 +83,14 @@ Example:
 
 This enables conditional behavior (e.g., choosing `clang-tidy` for C++ or `clippy` for Rust).
 
+Module
+------
+
+.. toctree::
+   :maxdepth: 1
+
+   module/index
+
 Components
 ----------
 

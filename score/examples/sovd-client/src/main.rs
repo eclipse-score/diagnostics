@@ -17,6 +17,10 @@ use tower::util::MapRequestLayer;
 use tracing_subscriber::EnvFilter;
 
 const DEFAULT_URL: &str = "http://127.0.0.1:7690/sovd/v1";
+// The placeholder authentication of the gateway accepts any non-empty credentials. The secret is the
+// one that the default security plugin of the CDA accepts with its `auth` feature.
+const CLIENT_ID: &str = "sovd-example-client";
+const CLIENT_SECRET: &str = "secret";
 
 fn connect(url: &str, token: Option<&str>) -> Result<Client, Box<dyn std::error::Error>> {
     let authorization = token
@@ -46,6 +50,12 @@ fn init_tracing() {
 
 fn is_unsupported_collection(error: &opensovd_client::Error) -> bool {
     matches!(error, opensovd_client::Error::ApiError { status, .. } if status.as_u16() == 404)
+}
+
+/// Gets the bearer token of the client from `authorize` of the gateway at `url`.
+async fn fetch_token(url: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let response = connect(url, None)?.authorize(CLIENT_ID, CLIENT_SECRET).await?;
+    Ok(response.access_token)
 }
 
 async fn run(client: &Client) -> Result<(), opensovd_client::Error> {
@@ -193,6 +203,44 @@ mod tests {
         task.abort();
         let _ = task.await;
     }
+
+    /// A server that answers every request with `status` and `body`, and sends back the request.
+    async fn answer_once(status: &str, body: &str) -> (String, tokio::task::JoinHandle<String>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("listener");
+        let url = format!("http://{}/sovd/v1", listener.local_addr().expect("address"));
+        let response = format!(
+            "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        let task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("accept");
+            let mut request = vec![0u8; 4096];
+            let read = stream.read(&mut request).await.expect("read request");
+            request.truncate(read);
+            stream.write_all(response.as_bytes()).await.expect("write response");
+            String::from_utf8_lossy(&request).into_owned()
+        });
+        (url, task)
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn token_comes_from_authorize() {
+        let body = r#"{"access_token":"issued.jwt.token","token_type":"Bearer","expires_in":3600}"#;
+        let (url, server) = answer_once("200 OK", body).await;
+        let token = fetch_token(&url).await.expect("token");
+        assert_eq!(token, "issued.jwt.token");
+        let request = server.await.expect("server");
+        assert!(request.starts_with("POST /sovd/v1/authorize "), "{request}");
+        assert!(request.contains(&format!(r#""client_id":"{CLIENT_ID}""#)), "{request}");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn authorize_refused_is_an_error() {
+        let (url, server) = answer_once("401 Unauthorized", "{}").await;
+        assert!(fetch_token(&url).await.is_err());
+        let _ = server.await;
+    }
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -204,8 +252,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| DEFAULT_URL.to_owned());
     // The client's bearer credential: a JWT with `sub` and `exp` claims. The gateway has no token
     // setting; it checks the token's shape (placeholder) or verifies it against its JWKS.
-    let token = std::env::var("SOVD_AUTH_TOKEN").ok();
-    let client = connect(&url, token.as_deref())?;
+    let token = fetch_token(&url).await?;
+    let client = connect(&url, Some(&token))?;
     run(&client).await?;
     Ok(())
 }

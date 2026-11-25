@@ -39,8 +39,20 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__fault_lib
 
-   The fault library shall let a component define its faults in a fault catalog, given as JSON or in code, and
-   shall refuse a catalog that defines a fault ID twice.
+   The fault library shall provide an API for defining and managing component fault catalogs. Fault catalogs can be
+   initialized from a JSON file, a JSON string, or constructed programmatically using the provided API.
+
+.. comp_req:: Unique Fault IDs in a Catalog
+   :id: comp_req__fault_lib__catalog_unique_ids
+   :reqtype: Functional
+   :security: NO
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_lib_catalog
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_lib
+
+   The fault library shall refuse a catalog that defines a fault ID twice.
 
 .. comp_req:: Fault Reporting
    :id: comp_req__fault_lib__reporting
@@ -65,7 +77,8 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__fault_lib
 
-   The fault library shall be usable from synchronous code without an async runtime and from several threads.
+   The fault library shall be usable from synchronous code without an async runtime and from several threads,
+   particularly also at the same point in time.
 
 .. comp_req:: Debouncing
    :id: comp_req__fault_lib__debounce
@@ -78,7 +91,7 @@ Functional Requirements
    :satisfied_by: comp__fault_lib
 
    The fault library shall debounce reports per fault before relaying them, with a policy configured in the
-   fault catalog: a minimum count within a time window, a hold time, or an edge with a cooldown.
+   fault catalog: a minimum count within a time window, a hold time, and/or an edge with a cooldown.
 
 .. comp_req:: Enabling Conditions
    :id: comp_req__fault_lib__enabling_conditions
@@ -103,12 +116,35 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__fault_lib
 
-   The fault library shall relay report to the diagnostic fault manager over IPC. A report whose send fails
+   The fault library shall relay reports to the diagnostic fault manager over IPC. A report whose send fails
    with a transient error (transport down, timeout, queue full or rate limited) shall be kept in a retry queue of
    512 reports, which drops the oldest report when full. Each report shall be retried up to 10 times, with the
-   delay doubling from 100 ms up to 5 s, and shall be dropped after the tenth failed attempt. A report whose send
-   fails with any other error shall be dropped at once. A successful send counts as relayed; the fault library
-   does not wait for an acknowledgement from the fault manager.
+   delay doubling from 100 ms up to 5 s, and shall be dropped after the tenth failed attempt.
+
+.. comp_req:: Relay Permanent Errors
+   :id: comp_req__fault_lib__relay_permanent_error
+   :reqtype: Functional
+   :security: NO
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_lib, feat_req__diagnostics__fault_manager
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_lib
+
+   The fault library shall drop a report at once when its send fails with an error that is not transient.
+
+.. comp_req:: Relay Acknowledgement
+   :id: comp_req__fault_lib__relay_success
+   :reqtype: Functional
+   :security: NO
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_lib, feat_req__diagnostics__fault_manager
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_lib
+
+   The fault library shall count a successful send as relayed and shall not wait for an acknowledgement from the
+   fault manager.
 
 .. comp_req:: Reporting Errors
    :id: comp_req__fault_lib__report_errors
@@ -150,7 +186,9 @@ not tag its tests with requirement IDs yet, so they are listed here instead of b
    * - Requirement
      - Tests in fault-lib
    * - :need:`comp_req__fault_lib__catalog`
-     - `duplicate_fault_id_returns_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/common/src/catalog.rs>`__, `catalog_builder_rejects_duplicate_text_fault_id <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_error_paths.rs>`__, `json_string_with_debounce_and_reset <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_json_catalog.rs>`__
+     - `json_file_catalog_e2e <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_json_catalog.rs>`__, `json_string_with_debounce_and_reset <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_json_catalog.rs>`__
+   * - :need:`comp_req__fault_lib__catalog_unique_ids`
+     - `duplicate_fault_id_returns_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/common/src/catalog.rs>`__, `catalog_builder_rejects_duplicate_text_fault_id <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_error_paths.rs>`__
    * - :need:`comp_req__fault_lib__reporting`
      - `publish_success <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/reporter.rs>`__, `report_fault_with_env_data_and_query <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_report_and_query.rs>`__
    * - :need:`comp_req__fault_lib__framework_agnostic`
@@ -160,7 +198,11 @@ not tag its tests with requirement IDs yet, so they are listed here instead of b
    * - :need:`comp_req__fault_lib__enabling_conditions`
      - `enabling_condition_status_transitions <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_debounce_aging_cycles_ec.rs>`__
    * - :need:`comp_req__fault_lib__relay`
-     - `cache_for_retry_evicts_oldest_when_full <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `backoff_delay_grows_exponentially <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `handle_send_failure_caches_on_transient_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+     - `cache_for_retry_evicts_oldest_when_full <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `backoff_delay_grows_exponentially <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `handle_send_failure_caches_on_transient_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `retry_config_defaults_are_sensible <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `process_retries_drops_after_max_retries <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+   * - :need:`comp_req__fault_lib__relay_permanent_error`
+     - `handle_send_failure_drops_on_permanent_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `permanent_errors_classified_correctly <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+   * - :need:`comp_req__fault_lib__relay_success`
+     - `process_retries_succeeds_on_first_retry <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__ (checks removal from the queue on success; no test covers the missing acknowledgement wait)
    * - :need:`comp_req__fault_lib__report_errors`
      - `req2_sink_error_propagates_to_caller <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/reporter.rs>`__, `publish_fail <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/reporter.rs>`__
    * - :need:`aou_req__fault_lib__fault_ids`

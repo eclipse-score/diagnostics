@@ -67,9 +67,12 @@ The fault library relays faults over iceoryx2. :need:`feat_req__diagnostics__int
 S-CORE::COM, which is open.
 
 * :need:`comp_req__fault_lib__catalog`
+* :need:`comp_req__fault_lib__catalog_unique_ids`
 * :need:`comp_req__fault_lib__reporting`
 * :need:`comp_req__fault_lib__framework_agnostic`
 * :need:`comp_req__fault_lib__debounce`
 * :need:`comp_req__fault_lib__enabling_conditions`
 * :need:`comp_req__fault_lib__relay`
+* :need:`comp_req__fault_lib__relay_permanent_error`
+* :need:`comp_req__fault_lib__relay_success`
 * :need:`comp_req__fault_lib__report_errors`

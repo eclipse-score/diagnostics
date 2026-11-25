@@ -63,9 +63,9 @@ Clients obtain a JWT from the external issuer and send it as `Authorization: Bea
 opensovd-gateway --auth-jwks /etc/sovd/issuer-jwks.json --auth-issuer https://issuer.example
 ```
 
-The example client reads `SOVD_AUTH_TOKEN` as its credential. This is a client setting, not a
-gateway setting: set it to a token from `authorize`, or from the external issuer when the gateway
-verifies tokens.
+The example client gets its token from `authorize` of the gateway. It sends fixed credentials, which
+the placeholder accepts and which the CDA accepts with its `auth` feature, so it does not work against
+a gateway that verifies tokens of an external issuer: that gateway serves no `authorize`.
 
 ### Getting a token
 
