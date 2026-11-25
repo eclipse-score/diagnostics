@@ -34,5 +34,9 @@
   {
     "version": "pr-97",
     "url": "https://eclipse-score.github.io/diagnostics/pr-97/"
+  },
+  {
+    "version": "pr-99",
+    "url": "https://eclipse-score.github.io/diagnostics/pr-99/"
   }
 ]
