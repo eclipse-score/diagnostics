@@ -1288,20 +1288,6 @@
     "FullyVerifies": null
   },
   {
-    "name": "score/opensovd-cda/ecu_sim_ci_test",
-    "file": null,
-    "line": null,
-    "result": "passed",
-    "repo_name": null,
-    "hash": null,
-    "url": null,
-    "TestType": null,
-    "DerivationTechnique": null,
-    "result_text": "",
-    "PartiallyVerifies": null,
-    "FullyVerifies": null
-  },
-  {
     "name": "cda_serves_version_and_components",
     "file": "score/opensovd-cda/tests/integration.rs",
     "line": "202",
