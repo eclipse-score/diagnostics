@@ -62,13 +62,28 @@ jobs:
             || { echo "-Werror applied to external repository compile actions"; exit 1; }
 
       - name: Check downstream package loading
-        run: python3 tests/bzlmod_consumer_test.py
+        run: |
+          python3 -m unittest discover -s tests -p 'test_override_manifest.py'
+          python3 tools/override_manifest.py --check
+          python3 tests/bzlmod_consumer_test.py
 
       - name: Bazel Build
         run: |
           read -r -a targets <<< "${BAZEL_BUILD_TARGETS}"
 
           bazel build --config=score_diag_x86_64_linux -- "${targets[@]}"
+
+      - name: Verify gateway provenance inputs
+        run: |
+          # Synthetic values exercise forwarding only, not release provenance.
+          fixture=0123456789abcdef0123456789abcdef01234567
+          version=$(bazel run --config=score_diag_x86_64_linux \
+            //score/opensovd-core:opensovd-gateway -- --version)
+          [[ "$version" != *"$fixture"* ]]
+          version=$(bazel run --config=score_diag_x86_64_linux \
+            --@opensovd_core//opensovd-cli/gateway:build_stamp=//score/opensovd-core/tests:provenance_test_stamp \
+            //score/opensovd-core:opensovd-gateway -- --version)
+          [[ "$version" == *"($fixture 2000-01-01)" ]]
 
       - name: Bazel Test
         run: |
