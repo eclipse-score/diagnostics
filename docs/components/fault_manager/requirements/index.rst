@@ -79,8 +79,8 @@ Functional Requirements
    :satisfied_by: comp__fault_manager
 
    The diagnostic fault manager shall reset a fault that no longer occurs by the policy of its catalog entry:
-   after a number of power cycles or named operation cycles, after a stable time, or only on request of a
-   tester.
+   after a number of power cycles or named operation cycles, after a stable time, or only on request of an
+   SOVD client.
 
 .. comp_req:: Persistence
    :id: comp_req__fault_manager__persistence
@@ -93,8 +93,7 @@ Functional Requirements
    :satisfied_by: comp__fault_manager
 
    The diagnostic fault manager shall store the status, the environment data, the occurrence counters and the
-   timestamps of all faults persistently, so that they survive a restart, and shall remove the stored data of
-   faults that are deleted.
+   timestamps of all faults persistently, so that they survive a restart.
 
 .. comp_req:: Fault Queries
    :id: comp_req__fault_manager__queries
@@ -107,7 +106,20 @@ Functional Requirements
    :satisfied_by: comp__fault_manager
 
    The diagnostic fault manager shall answer the SOVD server's queries for the faults of a catalog and their
-   environment data, and shall delete faults on its request, scoped to that catalog.
+   environment data.
+
+.. comp_req:: Fault Deletion
+   :id: comp_req__fault_manager__deletion
+   :reqtype: Functional
+   :security: YES
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_manager, feat_req__diagnostics__sovd_server, feat_req__diagnostics__db_persistence
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_manager
+
+   The diagnostic fault manager shall delete faults on the request of the SOVD server, scoped to the catalog of the
+   request, and shall remove the stored data of each deleted fault.
 
 Assumptions of Use (AoU)
 ========================
@@ -120,8 +132,9 @@ Assumptions of Use (AoU)
    :status: valid
    :version: 1
 
-   The integrator shall run one diagnostic fault manager per system and give it the fault catalogs of all
-   fault libraries that report to it.
+   The integrator shall run exactly one diagnostic fault manager per HPC, shall configure every fault library of
+   the HPC to report only to this instance, and shall configure this instance with the fault catalogs of those
+   fault libraries.
 
 Verification
 ============
@@ -144,8 +157,10 @@ not tag its tests with requirement IDs yet, so they are listed here instead of b
    * - :need:`comp_req__fault_manager__aging`
      - `power_cycles_trigger_met <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/aging_manager.rs>`__, `operation_cycles_named_counter <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/aging_manager.rs>`__, `stable_for_trigger <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/aging_manager.rs>`__, `tool_only_never_auto_resets <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/aging_manager.rs>`__
    * - :need:`comp_req__fault_manager__persistence`
-     - `fault_state_survives_dfm_restart <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_persistent_storage.rs>`__, `delete_fault_clears_persistent_state <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_persistent_storage.rs>`__, `to_and_from_kvs <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/sovd_fault_storage.rs>`__
+     - `fault_state_survives_dfm_restart <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_persistent_storage.rs>`__, `to_and_from_kvs <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/dfm_lib/src/sovd_fault_storage.rs>`__
    * - :need:`comp_req__fault_manager__queries`
-     - `direct_query_delete_single_fault <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_ipc_query.rs>`__, `query_unknown_path_returns_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_report_and_query.rs>`__, `delete_faults_scoped_to_catalog <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_multi_catalog.rs>`__
+     - `query_unknown_path_returns_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_report_and_query.rs>`__
+   * - :need:`comp_req__fault_manager__deletion`
+     - `direct_query_delete_single_fault <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_ipc_query.rs>`__, `delete_faults_scoped_to_catalog <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_multi_catalog.rs>`__, `delete_fault_clears_persistent_state <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_persistent_storage.rs>`__
    * - :need:`aou_req__fault_manager__single_instance`
      - `multi_catalog_fault_isolation <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_multi_catalog.rs>`__

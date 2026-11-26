@@ -73,6 +73,8 @@ S-CORE::COM, which is open.
 * :need:`comp_req__fault_lib__debounce`
 * :need:`comp_req__fault_lib__enabling_conditions`
 * :need:`comp_req__fault_lib__relay`
+* :need:`comp_req__fault_lib__relay_retry`
+* :need:`comp_req__fault_lib__relay_drop_logging`
 * :need:`comp_req__fault_lib__relay_permanent_error`
 * :need:`comp_req__fault_lib__relay_success`
 * :need:`comp_req__fault_lib__report_errors`
