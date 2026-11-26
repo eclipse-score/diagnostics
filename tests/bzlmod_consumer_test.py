@@ -13,6 +13,7 @@
 """Check that downstream modules can load the public packaging targets."""
 
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -24,14 +25,16 @@ OVERRIDES = {"classic-diagnostic-adapter", "mbedtls-rs", "opensovd_core"}
 
 
 class Manifest(TypedDict):
+    """Manifest schema consumed by the downstream smoke test."""
+
     schema_version: int
     git_overrides: list[dict[str, object]]
 
 
-def main() -> None:
-    manifest = cast(
-        Manifest, json.loads((ROOT / "git_overrides.json").read_text(encoding="utf-8"))
-    )
+def prepare_consumer_workspace(
+    manifest: Manifest, source_root: Path, workspace: Path
+) -> None:
+    """Create a consumer using every override and any supported root-local patches."""
     if manifest["schema_version"] != 1:
         raise ValueError("unsupported override manifest version")
     overrides: dict[str, dict[str, object]] = {}
@@ -41,45 +44,61 @@ def main() -> None:
             raise ValueError(f"invalid or duplicate module name: {name!r}")
         overrides[name] = entry
 
-    if not OVERRIDES <= overrides.keys():
-        raise ValueError(
-            f"Missing upstream git overrides: {OVERRIDES - overrides.keys()}"
-        )
+    # Validate all labels before copying or writing anything. This smoke test
+    # supports only simple names in the copied root-local patches package.
+    has_patches = False
+    for override in overrides.values():
+        patches = override.get("patches", [])
+        if not isinstance(patches, list):
+            raise TypeError("patches must be a list")
+        for label in cast(list[object], patches):
+            if not isinstance(label, str) or not re.fullmatch(
+                r"//patches:[A-Za-z0-9_][A-Za-z0-9_.+-]*", label
+            ):
+                raise ValueError(f"unsupported root patch label: {label}")
+            patch_dir = source_root / "patches"
+            patch = patch_dir / label.removeprefix("//patches:")
+            if not patch.is_file() or patch.resolve().parent != patch_dir.resolve():
+                raise ValueError(f"missing or external patch file: {label}")
+            has_patches = True
+    if has_patches and not (source_root / "patches" / "BUILD.bazel").is_file():
+        raise ValueError("missing patches/BUILD.bazel")
+
+    _ = shutil.copyfile(source_root / ".bazelversion", workspace / ".bazelversion")
+    if has_patches:
+        _ = shutil.copytree(source_root / "patches", workspace / "patches")
+    _ = (workspace / "MODULE.bazel").write_text(
+        "\n".join(
+            [
+                'module(name = "diagnostics_consumer_test")',
+                'bazel_dep(name = "score_diagnostics", version = "0.0.0")',
+                f"local_path_override(module_name = 'score_diagnostics', path = {str(source_root)!r})",
+                *(
+                    "git_override(\n"
+                    + "".join(
+                        f"    {key} = {value!r},\n" for key, value in entry.items()
+                    )
+                    + ")"
+                    for entry in overrides.values()
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def main() -> None:
+    """Load the checked snapshot and query downstream targets."""
+    manifest = cast(
+        Manifest, json.loads((ROOT / "git_overrides.json").read_text(encoding="utf-8"))
+    )
+    names = {entry.get("module_name") for entry in manifest["git_overrides"]}
+    if not OVERRIDES <= names:
+        raise ValueError(f"Missing upstream git overrides: {OVERRIDES - names}")
 
     with tempfile.TemporaryDirectory(prefix="diagnostics-consumer-") as temp_dir:
         workspace = Path(temp_dir)
-        _ = shutil.copyfile(ROOT / ".bazelversion", workspace / ".bazelversion")
-        # Preserve these root-relative labels by copying the public patch package.
-        # New patch layouts must be explicitly supported rather than silently ignored.
-        has_patches = False
-        for override in overrides.values():
-            patches = override.get("patches", [])
-            if not isinstance(patches, list):
-                raise TypeError("patches must be a list")
-            for label in cast(list[object], patches):
-                if not isinstance(label, str) or not label.startswith("//patches:"):
-                    raise ValueError(f"unsupported root patch label: {label}")
-                has_patches = True
-        if has_patches:
-            _ = shutil.copytree(ROOT / "patches", workspace / "patches")
-        _ = (workspace / "MODULE.bazel").write_text(
-            "\n".join(
-                [
-                    'module(name = "diagnostics_consumer_test")',
-                    'bazel_dep(name = "score_diagnostics", version = "0.0.0")',
-                    f"local_path_override(module_name = 'score_diagnostics', path = {str(ROOT)!r})",
-                    *(
-                        "git_override(\n"
-                        + "".join(
-                            f"    {key} = {value!r},\n" for key, value in entry.items()
-                        )
-                        + ")"
-                        for entry in overrides.values()
-                    ),
-                ]
-            ),
-            encoding="utf-8",
-        )
+        prepare_consumer_workspace(manifest, ROOT, workspace)
         result = subprocess.run(
             [
                 "bazel",

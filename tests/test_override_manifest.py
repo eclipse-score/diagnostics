@@ -12,6 +12,7 @@
 # *******************************************************************************
 """Tests for the checked Git override export."""
 
+import ast
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.bzlmod_consumer_test import prepare_consumer_workspace
 from tools.override_manifest import manifest_from_module
 
 
@@ -73,6 +75,65 @@ git_override(module_name="a", remote="https://example/a", commit="{b}")
         override = f'git_override(module_name="x", remote="url", commit="{commit}")'
         with self.assertRaises(ValueError):
             _ = manifest_from_module(override + "\n" + override)
+
+    def test_patch_manifest_copies_package_and_preserves_override(self) -> None:
+        commit = "a" * 40
+        manifest = manifest_from_module(
+            f'git_override(module_name="x", remote="url", commit="{commit}", '
+            + 'patches=["//patches:fix.patch"], patch_strip=1)'
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "source"
+            workspace = Path(temp_dir) / "consumer"
+            (root / "patches").mkdir(parents=True)
+            workspace.mkdir()
+            _ = (root / ".bazelversion").write_text("8.8.2\n")
+            _ = (root / "patches" / "BUILD.bazel").write_text(
+                'exports_files(["fix.patch"])\n'
+            )
+            patch = "--- a/value.txt\n+++ b/value.txt\n@@ -1 +1 @@\n-old\n+new\n"
+            _ = (root / "patches" / "fix.patch").write_text(patch)
+            prepare_consumer_workspace(manifest, root, workspace)
+            copied_patch = workspace / "patches" / "fix.patch"
+            self.assertEqual(copied_patch.read_text(), patch)
+            source = (workspace / "MODULE.bazel").read_text()
+            self.assertEqual(manifest_from_module(source), manifest)
+            _ = ast.parse(source)
+            upstream = Path(temp_dir) / "upstream"
+            upstream.mkdir()
+            _ = (upstream / "value.txt").write_text("old\n")
+            _ = subprocess.run(
+                ["patch", "-p1", "-i", str(copied_patch)],
+                cwd=upstream,
+                check=True,
+                capture_output=True,
+            )
+            self.assertEqual((upstream / "value.txt").read_text(), "new\n")
+
+    def test_unsupported_patch_labels_fail_before_writing(self) -> None:
+        commit = "a" * 40
+        for patches in (
+            '["@other//patches:fix.patch"]',
+            '["//patches:../fix.patch"]',
+            '["//patches:nested/fix.patch"]',
+            '["//patches:missing.patch"]',
+            '"//patches:fix.patch"',
+        ):
+            manifest = manifest_from_module(
+                f'git_override(module_name="x", remote="url", commit="{commit}", '
+                + f"patches={patches})"
+            )
+            with (
+                self.subTest(patches=patches),
+                tempfile.TemporaryDirectory() as temp_dir,
+            ):
+                root = Path(temp_dir) / "source"
+                workspace = Path(temp_dir) / "consumer"
+                root.mkdir()
+                workspace.mkdir()
+                with self.assertRaises((ValueError, TypeError)):
+                    prepare_consumer_workspace(manifest, root, workspace)
+                self.assertEqual(list(workspace.iterdir()), [])
 
 
 if __name__ == "__main__":

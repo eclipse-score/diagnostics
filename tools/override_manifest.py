@@ -21,9 +21,12 @@ from typing import TypedDict, cast
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "git_overrides.json"
+SCHEMA_VERSION = 1
 
 
 class Manifest(TypedDict):
+    """Versioned snapshot of all root Git override keyword arguments."""
+
     schema_version: int
     git_overrides: list[dict[str, object]]
 
@@ -82,7 +85,7 @@ def manifest_from_module(source: str) -> Manifest:
         names.add(name)
         overrides.append((name, values))
     return {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "git_overrides": [
             values for _, values in sorted(overrides, key=lambda x: x[0])
         ],
@@ -90,6 +93,8 @@ def manifest_from_module(source: str) -> Manifest:
 
 
 def main() -> None:
+    """Write the manifest or report whether it is stale."""
+
     class Args(argparse.Namespace):
         check: bool = False
 
