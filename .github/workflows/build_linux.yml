@@ -65,6 +65,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_override_manifest.py'
           python3 tools/override_manifest.py --check
+          python3 tests/bzlmod_patch_integration_test.py
           python3 tests/bzlmod_consumer_test.py
 
       - name: Bazel Build
