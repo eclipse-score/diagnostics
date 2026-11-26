@@ -1,7 +1,7 @@
 {
   "git_overrides": [
     {
-      "commit": "4d11c51261553c8f5bbb225e0030f4dbc91a08ea",
+      "commit": "0946583dd9da16d59ff17c3407386f94f0ea9dd2",
       "module_name": "classic-diagnostic-adapter",
       "remote": "https://github.com/eclipse-opensovd/classic-diagnostic-adapter.git"
     },

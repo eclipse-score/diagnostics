@@ -14,10 +14,10 @@ module(name = "score_diagnostics")
 
 bazel_dep(name = "classic-diagnostic-adapter", version = "0.1.0")
 
-# Includes requirements_docs from eclipse-opensovd/classic-diagnostic-adapter#763.
+# This revision exports requirements_docs for the downstream requirements build.
 git_override(
     module_name = "classic-diagnostic-adapter",
-    commit = "4d11c51261553c8f5bbb225e0030f4dbc91a08ea",
+    commit = "0946583dd9da16d59ff17c3407386f94f0ea9dd2",
     remote = "https://github.com/eclipse-opensovd/classic-diagnostic-adapter.git",
 )
 
