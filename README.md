@@ -172,14 +172,18 @@ The machine-readable [git_overrides.json](git_overrides.json) contains the
 complete keyword arguments for each override in `git_overrides`, with
 `schema_version` 1. Consumers should reject unknown schema versions and handle
 all attributes, including patches if present; patch labels are relative to the
-root module and must be copied and translated by the consumer. `MODULE.bazel`
+root module and must be copied and translated by the consumer. A generator
+that cannot safely transfer an attribute or patch must reject the manifest
+rather than omit it. In particular, the reference integration generator currently
+rejects patch-bearing manifests; diagnostics' smoke test only supports local
+`//patches:<filename>` labels and copies that package into its consumer root.
+`MODULE.bazel`
 is authoritative: after changing its overrides run
 `python3 tools/override_manifest.py` and commit the regenerated manifest.
 `python3 tools/override_manifest.py --check` detects drift in CI.
 
-The CDA pin includes the requirements export from the unmerged
-[CDA PR #763](https://github.com/eclipse-opensovd/classic-diagnostic-adapter/pull/763);
-update it to the merged commit when that PR lands.
+The CDA pin includes the requirements export merged in
+[CDA PR #763](https://github.com/eclipse-opensovd/classic-diagnostic-adapter/pull/763).
 
 The OpenSOVD pin is an unmerged commit on `feat/score-integration`. It includes
 the integration APIs and a declared build-stamp file input; it does **not**
@@ -209,7 +213,7 @@ use the same hermetic toolchains:
 | Component | Toolchain | Version |
 |-----------|-----------|---------|
 | **C/C++** | GCC (hermetic) | 12.2.0 |
-| **Rust** | Ferrocene | Pinned by `score_toolchains_rust` 0.9.1 |
+| **Rust** | Ferrocene | Pinned by `score_toolchains_rust` 0.10.1 |
 
 `rules_foreign_cc` 0.17.0 uses pkgconf for native dependency builds with the
 hermetic GCC toolchain. Auto-detected system C/C++ toolchains are disabled.
@@ -261,8 +265,5 @@ even while the TimeCircuits result still reports less than 100% progress; the te
 
 ### Patches
 
-This repository maintains local patches for upstream dependencies:
-
-| Patch | Purpose | Status |
-|-------|---------|--------|
-| `classic-diagnostic-adapter-export-requirements.patch` | Exposes the CDA requirement sources and Sphinx configuration as `requirements_docs` | Required for `//score/opensovd-cda:needs_json`; upstream does not export them |
+No local dependency patches are currently required. The pinned CDA revision
+exports `requirements_docs` for `//score/opensovd-cda:needs_json`.
