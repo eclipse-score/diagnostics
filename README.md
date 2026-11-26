@@ -165,12 +165,42 @@ and `opensovd_core`, `classic-diagnostic-adapter` and `mbedtls-rs` are regular
 `bazel_dep`s, so another Bazel module can build them. The example client stays
 visible only to the CDA package.
 
-Bazel only honours `git_override` and patches in the root module. A consumer of
-`score_diagnostics` must therefore repeat the `git_override`s and `patches`
-that this repository declares for these three modules (see
-[MODULE.bazel](MODULE.bazel) and [patches](patches)), and enable
-`--experimental_isolated_extension_usages` in its `.bazelrc`. This can go away
-once the patches are no longer needed (eclipse-opensovd/opensovd-core#247).
+Bazel only honours `git_override` in the root module. A consumer of
+`score_diagnostics` must repeat these overrides and enable
+`--experimental_isolated_extension_usages` in its `.bazelrc`.
+The machine-readable [git_overrides.json](git_overrides.json) contains the
+complete keyword arguments for each override in `git_overrides`, with
+`schema_version` 1. Consumers should reject unknown schema versions and handle
+all attributes, including patches if present; patch labels are relative to the
+root module and must be copied and translated by the consumer. `MODULE.bazel`
+is authoritative: after changing its overrides run
+`python3 tools/override_manifest.py` and commit the regenerated manifest.
+`python3 tools/override_manifest.py --check` detects drift in CI.
+
+The CDA pin includes the requirements export from the unmerged
+[CDA PR #763](https://github.com/eclipse-opensovd/classic-diagnostic-adapter/pull/763);
+update it to the merged commit when that PR lands.
+
+The OpenSOVD pin is an unmerged commit on `feat/score-integration`. It includes
+the integration APIs and a declared build-stamp file input; it does **not**
+include the separate [OpenSOVD PR #302](https://github.com/eclipse-opensovd/opensovd-core/pull/302).
+
+Callers decide whether to supply verified gateway provenance. First inspect the
+resolved repository (for example with
+`bazel mod show_repo opensovd_core --output=streamed_jsonproto`), verify the
+commit and absence of source modifications, and obtain its commit timestamp
+from a verified clone of the same upstream repository. A public Bazel target
+in the consuming root may provide a file with `OPENSOVD_COMMIT_SHA=<full SHA>`
+and `SOURCE_DATE_EPOCH=<commit timestamp>` on separate lines. Pass it with
+`--@opensovd_core//opensovd-cli/gateway:build_stamp=//package:stamp_target`.
+These are declared file inputs, not automatically inherited shell variables.
+For local, archive or patched overrides, only supply values if the exact sources
+are independently verified; the build does not verify them.
+
+Without a supplied stamp file, the current upstream implementation falls back
+to Git and can report metadata from the wrong checkout. Do not treat the
+unstamped result as verified source provenance. PR #302 proposes a separate
+approach to that fallback and is not included in the pinned branch.
 
 All Linux targets, including the OpenSOVD gateway, CDA and example client, use
 the `score_diag_x86_64_linux` configuration. Host build tools and target code
