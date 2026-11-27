@@ -105,8 +105,9 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__uds_data_bridge
 
-   The UDS data bridge shall answer a read with an error, without calling the UDS handler, while eight reads of
-   that handler are outstanding.
+   The UDS data bridge shall answer a read with an error, without calling the UDS handler, while the number of
+   reads of that handler that are outstanding has reached the configured limit. The limit shall be configurable,
+   with 8 as the default.
 
 Non-Functional Requirements
 ===========================

@@ -70,3 +70,4 @@ by ISO 17978 and not repeated here.
 * :need:`comp_req__fault_manager__aging`
 * :need:`comp_req__fault_manager__persistence`
 * :need:`comp_req__fault_manager__queries`
+* :need:`comp_req__fault_manager__deletion`

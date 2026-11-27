@@ -39,8 +39,10 @@ Functional Requirements
    :version: 1
    :satisfied_by: comp__fault_lib
 
-   The fault library shall provide an API for defining and managing component fault catalogs. Fault catalogs can be
-   initialized from a JSON file, a JSON string, or constructed programmatically using the provided API.
+   The fault library shall provide an API for defining and managing component fault catalogs. A fault catalog can be
+   loaded from a JSON file on the filesystem, from a JSON string passed by the caller, or constructed programmatically
+   using the provided API. A JSON catalog shall conform to the configuration type ``FaultCatalogConfig`` of the fault
+   library.
 
 .. comp_req:: Unique Fault IDs in a Catalog
    :id: comp_req__fault_lib__catalog_unique_ids
@@ -78,7 +80,7 @@ Functional Requirements
    :satisfied_by: comp__fault_lib
 
    The fault library shall be usable from synchronous code without an async runtime and from several threads,
-   particularly also at the same point in time.
+   particularly also concurrently at the same point in time.
 
 .. comp_req:: Debouncing
    :id: comp_req__fault_lib__debounce
@@ -117,9 +119,38 @@ Functional Requirements
    :satisfied_by: comp__fault_lib
 
    The fault library shall relay reports to the diagnostic fault manager over IPC. A report whose send fails
-   with a transient error (transport down, timeout, queue full or rate limited) shall be kept in a retry queue of
-   512 reports, which drops the oldest report when full. Each report shall be retried up to 10 times, with the
-   delay doubling from 100 ms up to 5 s, and shall be dropped after the tenth failed attempt.
+   with a transient error (transport down, timeout, queue full or rate limited) shall be kept in a retry queue,
+   which drops the oldest report when full. The retry queue shall hold a configurable number of reports, 512 by
+   default. Each report shall be queued separately, so a new report for a fault that already has a queued report
+   is queued as well and is not merged with it. A later report is sent without waiting for an earlier report of
+   the same fault that is still in the retry queue, so the fault manager may receive reports of the same fault
+   in a different order than they were reported.
+
+.. comp_req:: Relay Retries
+   :id: comp_req__fault_lib__relay_retry
+   :reqtype: Functional
+   :security: NO
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_lib, feat_req__diagnostics__fault_manager
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_lib
+
+   Each report in the retry queue shall be retried a configurable number of times, 10 by default, with the delay
+   doubling from 100 ms up to 5 s, and shall be dropped after the last failed attempt.
+
+.. comp_req:: Relay Drop Logging
+   :id: comp_req__fault_lib__relay_drop_logging
+   :reqtype: Functional
+   :security: NO
+   :safety: QM
+   :derived_from: feat_req__diagnostics__fault_lib, feat_req__diagnostics__fault_manager
+   :status: invalid
+   :version: 1
+   :satisfied_by: comp__fault_lib
+
+   The fault library shall log each report it drops, whether the retry queue evicts it, its retries are exhausted,
+   or its send fails with an error that is not transient.
 
 .. comp_req:: Relay Permanent Errors
    :id: comp_req__fault_lib__relay_permanent_error
@@ -198,7 +229,11 @@ not tag its tests with requirement IDs yet, so they are listed here instead of b
    * - :need:`comp_req__fault_lib__enabling_conditions`
      - `enabling_condition_status_transitions <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/tests/integration/src/test_debounce_aging_cycles_ec.rs>`__
    * - :need:`comp_req__fault_lib__relay`
-     - `cache_for_retry_evicts_oldest_when_full <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `backoff_delay_grows_exponentially <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `handle_send_failure_caches_on_transient_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `retry_config_defaults_are_sensible <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `process_retries_drops_after_max_retries <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+     - `cache_for_retry_evicts_oldest_when_full <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `cache_for_retry_adds_to_queue <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `handle_send_failure_caches_on_transient_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `retry_config_defaults_are_sensible <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+   * - :need:`comp_req__fault_lib__relay_retry`
+     - `backoff_delay_grows_exponentially <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `process_retries_drops_after_max_retries <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `retry_config_defaults_are_sensible <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
+   * - :need:`comp_req__fault_lib__relay_drop_logging`
+     - No fault-lib test checks the log entries yet.
    * - :need:`comp_req__fault_lib__relay_permanent_error`
      - `handle_send_failure_drops_on_permanent_error <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__, `permanent_errors_classified_correctly <https://github.com/eclipse-opensovd/fault-lib/blob/12dac502616701734f90a61edca1326ae2ac6506/src/fault_lib/src/ipc_worker.rs>`__
    * - :need:`comp_req__fault_lib__relay_success`
