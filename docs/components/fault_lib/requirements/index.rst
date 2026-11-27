@@ -122,7 +122,9 @@ Functional Requirements
    with a transient error (transport down, timeout, queue full or rate limited) shall be kept in a retry queue,
    which drops the oldest report when full. The retry queue shall hold a configurable number of reports, 512 by
    default. Each report shall be queued separately, so a new report for a fault that already has a queued report
-   is queued as well and is not merged with it.
+   is queued as well and is not merged with it. A later report is sent without waiting for an earlier report of
+   the same fault that is still in the retry queue, so the fault manager may receive reports of the same fault
+   in a different order than they were reported.
 
 .. comp_req:: Relay Retries
    :id: comp_req__fault_lib__relay_retry
