@@ -170,7 +170,7 @@ use_repo(crate, "score_crate_index")
 bazel_dep(name = "rules_cc", version = "0.2.18")
 
 # functional deps
-bazel_dep(name = "score_baselibs", version = "0.2.9")
+bazel_dep(name = "score_baselibs", version = "0.2.21")
 
 # NOTE: score_baselibs has flatbuffers@25.12.19 as a non-dev dependency and that one
 # transitively pulls grpc -> googleapis -> grpc-java@1.66.0 into all consumers.
