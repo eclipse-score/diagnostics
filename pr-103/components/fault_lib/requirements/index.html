@@ -503,7 +503,7 @@
                   
   <section id="requirements">
 <span id="fault-lib-requirements"></span><h1>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h1>
-<div class="need_container docutils container" id="SNCB-29fa9216">
+<div class="need_container docutils container" id="SNCB-06225f12">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_document table" id="doc__fault_lib_requirements">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -549,7 +549,7 @@
 </div>
 <section id="functional-requirements">
 <h2>Functional Requirements<a class="headerlink" href="#functional-requirements" title="Link to this heading">#</a></h2>
-<div class="need_container docutils container" id="SNCB-2872f302">
+<div class="need_container docutils container" id="SNCB-e905b4f9">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__catalog">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -597,7 +597,7 @@ library.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-b74b8a43">
+<div class="need_container docutils container" id="SNCB-23ee7d2c">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__catalog_unique_ids">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -642,7 +642,7 @@ library.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-010c9976">
+<div class="need_container docutils container" id="SNCB-ba7e3fa3">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__reporting">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -688,7 +688,7 @@ the report and optional environment data, through a reporter bound once to the f
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-699a1c3c">
+<div class="need_container docutils container" id="SNCB-42c2b3a5">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__framework_agnostic">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -734,7 +734,7 @@ particularly also concurrently at the same point in time.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-7e4aeb93">
+<div class="need_container docutils container" id="SNCB-3ff50dd4">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__debounce">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -780,7 +780,7 @@ fault catalog: a minimum count within a time window, a hold time, and/or an edge
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-01001e7c">
+<div class="need_container docutils container" id="SNCB-18303356">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__enabling_conditions">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -826,7 +826,7 @@ query it.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-50298520">
+<div class="need_container docutils container" id="SNCB-a9b092a4">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__relay">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -859,7 +859,9 @@ query it.</p></td>
 with a transient error (transport down, timeout, queue full or rate limited) shall be kept in a retry queue,
 which drops the oldest report when full. The retry queue shall hold a configurable number of reports, 512 by
 default. Each report shall be queued separately, so a new report for a fault that already has a queued report
-is queued as well and is not merged with it.</p></td>
+is queued as well and is not merged with it. A later report is sent without waiting for an earlier report of
+the same fault that is still in the retry queue, so the fault manager may receive reports of the same fault
+in a different order than they were reported.</p></td>
 </tr>
 <tr class="footer row-even"><td class="footer_left" colspan="2"><div class="needs_footer_left line-block">
 <div class="line"><span><span class="needs-id"><a class="reference internal" href="#comp_req__fault_lib__relay" title="comp_req__fault_lib__relay">comp_req__fault_lib__relay</a></span></span></div>
@@ -875,7 +877,7 @@ is queued as well and is not merged with it.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-2e933597">
+<div class="need_container docutils container" id="SNCB-e018cee3">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__relay_retry">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -921,7 +923,7 @@ doubling from 100 ms up to 5 s, and shall be dropped after the last failed attem
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-8a0a2247">
+<div class="need_container docutils container" id="SNCB-cabba8ca">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__relay_drop_logging">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -967,7 +969,7 @@ or its send fails with an error that is not transient.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-db050b3b">
+<div class="need_container docutils container" id="SNCB-38f57cae">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__relay_permanent_error">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -1012,7 +1014,7 @@ or its send fails with an error that is not transient.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-37b831b8">
+<div class="need_container docutils container" id="SNCB-a92df30d">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__relay_success">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -1058,7 +1060,7 @@ fault manager.</p></td>
 </table>
 </div>
 </div>
-<div class="need_container docutils container" id="SNCB-83715705">
+<div class="need_container docutils container" id="SNCB-47d9025e">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_comp_req table" id="comp_req__fault_lib__report_errors">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
@@ -1107,7 +1109,7 @@ queued.</p></td>
 </section>
 <section id="assumptions-of-use-aou">
 <h2>Assumptions of Use (AoU)<a class="headerlink" href="#assumptions-of-use-aou" title="Link to this heading">#</a></h2>
-<div class="need_container docutils container" id="SNCB-26878341">
+<div class="need_container docutils container" id="SNCB-5e2b8b72">
 <div class="pst-scrollable-table-container"><table class="need needs_grid_complex needs_layout_score needs_style_none needs_type_aou_req table" id="aou_req__fault_lib__fault_ids">
 <tbody>
 <tr class="head row-odd"><td class="head_left" colspan="2"><div class="needs_head_left line-block">
