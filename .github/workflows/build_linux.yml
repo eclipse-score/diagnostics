@@ -68,13 +68,19 @@ jobs:
         run: |
           read -r -a targets <<< "${BAZEL_BUILD_TARGETS}"
 
-          bazel build --config=score_diag_x86_64_linux -- "${targets[@]}"
+          bazel build \
+            --action_env=AWS_LC_SYS_USE_SYSTEM=0 \
+            --config=score_diag_x86_64_linux \
+            -- "${targets[@]}" 
 
       - name: Bazel Test
         run: |
           read -r -a targets <<< "${BAZEL_TEST_TARGETS}"
 
-          bazel test --config=score_diag_x86_64_linux -- "${targets[@]}"
+          bazel test \
+            --action_env=AWS_LC_SYS_USE_SYSTEM=0 \
+            --config=score_diag_x86_64_linux \
+            -- "${targets[@]}"
 
       - name: Test gateway mDNS discovery and withdrawal
         run: |
