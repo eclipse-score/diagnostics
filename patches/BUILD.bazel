@@ -10,6 +10,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 # *******************************************************************************
+# SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
+
 exports_files([
-    "classic-diagnostic-adapter-export-requirements.patch",
+    "aws-lc-sys-qnx.patch",
+    "cda-qnx.patch",
+    "core-qnx.patch",
+    "if-addrs-qnx.patch",
+    "libc-0.2.191-qnx.patch",
+    "linkme-impl-qnx.patch",
+    "memmap2-qnx.patch",
+    "socket-pktinfo-qnx.patch",
 ])

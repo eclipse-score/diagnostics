@@ -19,6 +19,14 @@ exports_files(
     visibility = ["//score/opensovd-core:__pkg__"],
 )
 
+# Synthetic metadata for the CI build-stamp forwarding check, not release provenance.
+genrule(
+    name = "provenance_test_stamp",
+    outs = ["provenance_test_stamp.env"],
+    cmd = "printf '%s\\n' 'OPENSOVD_COMMIT_SHA=0123456789abcdef0123456789abcdef01234567' 'SOURCE_DATE_EPOCH=946684800' > $@",
+    visibility = ["//visibility:public"],
+)
+
 py_binary(
     name = "mdns_browse_client",
     testonly = True,

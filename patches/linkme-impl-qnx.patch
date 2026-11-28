@@ -1,0 +1,93 @@
+# SPDX-FileCopyrightText: 2026 Copyright (c) Contributors to the Eclipse Foundation
+# SPDX-License-Identifier: Apache-2.0
+#
+# linkme-impl 0.3.38: select the existing ELF section backend for QNX Neutrino.
+# Upstream: https://github.com/dtolnay/linkme, author David Tolnay.
+# Base: 59b5f4bd1328c47c3b091cc6b50cd819f5230d5e (impl/).
+# Upstream license: MIT OR Apache-2.0; this backport uses Apache-2.0.
+# Keep boundary symbols, empty-section anchors, duplicate checks and elements
+# on the same backend without changing registration or retention semantics.
+diff --git a/src/declaration.rs b/src/declaration.rs
+index 6e0abf9..4c9402b 100644
+--- a/src/declaration.rs
++++ b/src/declaration.rs
+@@ -144,6 +144,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+             #[cfg(any(
+                 target_os = "none",
+                 target_os = "linux",
++                target_os = "nto",
+                 target_os = "macos",
+                 target_os = "ios",
+                 target_os = "tvos",
+@@ -160,6 +161,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                     any(
+                         target_os = "none",
+                         target_os = "linux",
++                        target_os = "nto",
+                         target_os = "android",
+                         target_os = "fuchsia",
+                         target_os = "psp",
+@@ -176,6 +178,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                     any(
+                         target_os = "none",
+                         target_os = "linux",
++                        target_os = "nto",
+                         target_os = "android",
+                         target_os = "fuchsia",
+                         target_os = "psp",
+@@ -192,6 +195,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                     any(
+                         target_os = "none",
+                         target_os = "linux",
++                        target_os = "nto",
+                         target_os = "android",
+                         target_os = "fuchsia",
+                         target_os = "psp",
+@@ -208,6 +212,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                     any(
+                         target_os = "none",
+                         target_os = "linux",
++                        target_os = "nto",
+                         target_os = "android",
+                         target_os = "fuchsia",
+                         target_os = "psp",
+@@ -245,6 +250,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+             #[cfg(any(
+                 target_os = "none",
+                 target_os = "linux",
++                target_os = "nto",
+                 target_os = "android",
+                 target_os = "fuchsia",
+                 target_os = "illumos",
+@@ -257,6 +263,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                 any(
+                     target_os = "none",
+                     target_os = "linux",
++                    target_os = "nto",
+                     target_os = "android",
+                     target_os = "fuchsia",
+                     target_os = "psp",
+@@ -273,6 +280,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                 any(
+                     target_os = "none",
+                     target_os = "linux",
++                    target_os = "nto",
+                     target_os = "android",
+                     target_os = "fuchsia",
+                     target_os = "psp",
+@@ -289,6 +297,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+             #[cfg(not(any(
+                 target_os = "none",
+                 target_os = "linux",
++                target_os = "nto",
+                 target_os = "macos",
+                 target_os = "ios",
+                 target_os = "tvos",
+@@ -362,6 +371,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
+                     any(
+                         target_os = "none",
+                         target_os = "linux",
++                        target_os = "nto",
+                         target_os = "android",
+                         target_os = "fuchsia",
+                         target_os = "psp",

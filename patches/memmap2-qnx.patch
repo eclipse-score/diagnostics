@@ -1,0 +1,273 @@
+# SPDX-FileCopyrightText: 2026 Copyright (c) Contributors to the Eclipse Foundation
+# SPDX-License-Identifier: Apache-2.0
+#
+# memmap2 0.9.11 and 0.9.12: QNX POSIX access-pattern advice.
+# QNX API: https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/posix_madvise.html
+# DontNeed is explicitly unsupported; POSIX_DONTNEED is not a destructive discard.
+diff --git a/Cargo.toml b/Cargo.toml
+index bebfe50..b0b6454 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -58,2 +58,5 @@
+ [target."cfg(unix)".dependencies.libc]
+ version = "0.2.151"
++
++[lints.rust]
++unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("qnx"))'] }
+diff --git a/README.md b/README.md
+index 55eed9e..807561b 100644
+--- a/README.md
++++ b/README.md
+@@ -23,2 +23,8 @@ A list of supported/tested targets can be found in [Actions](https://github.com/
+
++On QNX, `Advice::{Normal, Random, Sequential, WillNeed}` use `posix_madvise`
++access-pattern hints. Valid empty hint ranges succeed without a syscall.
++`UncheckedAdvice::DontNeed` returns `std::io::ErrorKind::Unsupported`: QNX's
++`POSIX_MADV_DONTNEED` does not provide the destructive discard semantics of
++that operation.
++
+ ## License
+diff --git a/src/advice.rs b/src/advice.rs
+index 8b7e1e6..63fa41c 100644
+--- a/src/advice.rs
++++ b/src/advice.rs
+@@ -1,32 +1,44 @@
++#[cfg(not(any(target_os = "nto", target_os = "qnx")))]
++use libc::{MADV_DONTNEED, MADV_NORMAL, MADV_RANDOM, MADV_SEQUENTIAL, MADV_WILLNEED};
++#[cfg(any(target_os = "nto", target_os = "qnx"))]
++use libc::{
++    POSIX_MADV_DONTNEED as MADV_DONTNEED, POSIX_MADV_NORMAL as MADV_NORMAL,
++    POSIX_MADV_RANDOM as MADV_RANDOM, POSIX_MADV_SEQUENTIAL as MADV_SEQUENTIAL,
++    POSIX_MADV_WILLNEED as MADV_WILLNEED,
++};
++
+ /// Values supported by [`Mmap::advise`][crate::Mmap::advise] and [`MmapMut::advise`][crate::MmapMut::advise] functions.
+ ///
+ /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
++///
++/// On QNX, these hints use the corresponding `POSIX_MADV_*` values with
++/// [`posix_madvise()`](https://www.qnx.com/developers/docs/8.0/com.qnx.doc.neutrino.lib_ref/topic/p/posix_madvise.html).
+ #[repr(i32)]
+ #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+ pub enum Advice {
+     /// **MADV_NORMAL**
+     ///
+     /// No special treatment.  This is the default.
+-    Normal = libc::MADV_NORMAL,
++    Normal = MADV_NORMAL,
+
+     /// **MADV_RANDOM**
+     ///
+     /// Expect page references in random order.  (Hence, read
+     /// ahead may be less useful than normally.)
+-    Random = libc::MADV_RANDOM,
++    Random = MADV_RANDOM,
+
+     /// **MADV_SEQUENTIAL**
+     ///
+     /// Expect page references in sequential order.  (Hence, pages
+     /// in the given range can be aggressively read ahead, and may
+     /// be freed soon after they are accessed.)
+-    Sequential = libc::MADV_SEQUENTIAL,
++    Sequential = MADV_SEQUENTIAL,
+
+     /// **MADV_WILLNEED**
+     ///
+     /// Expect access in the near future.  (Hence, it might be a
+     /// good idea to read some pages ahead.)
+-    WillNeed = libc::MADV_WILLNEED,
++    WillNeed = MADV_WILLNEED,
+
+     /// **MADV_DONTFORK** - Linux only (since Linux 2.6.16)
+     ///
+@@ -285,7 +297,10 @@ pub enum UncheckedAdvice {
+     /// Using the returned value with conceptually write to the
+     /// mapped pages, i.e. borrowing the mapping when the pages
+     /// are freed results in undefined behaviour.
+-    DontNeed = libc::MADV_DONTNEED,
++    ///
++    /// On QNX, this operation returns [`std::io::ErrorKind::Unsupported`].
++    /// `POSIX_MADV_DONTNEED` is only an access hint, not a destructive discard.
++    DontNeed = MADV_DONTNEED,
+
+     //
+     // The rest are Linux-specific
+diff --git a/src/unix.rs b/src/unix.rs
+index 6c63e10..1efe197 100644
+--- a/src/unix.rs
++++ b/src/unix.rs
+@@ -438,12 +438,46 @@ impl MmapInner {
+         self.len
+     }
+
++    #[cfg(any(
++        target_os = "nto",
++        target_os = "qnx",
++        all(test, any(target_os = "linux", target_os = "macos"))
++    ))]
++    fn advise_posix(&self, advice: libc::c_int, offset: usize, len: usize) -> io::Result<()> {
++        // POSIX DONTNEED does not implement UncheckedAdvice::DontNeed's discard semantics.
++        if advice == libc::POSIX_MADV_DONTNEED {
++            return Err(io::ErrorKind::Unsupported.into());
++        }
++        if offset > self.len || len > self.len - offset {
++            return Err(io::Error::from_raw_os_error(libc::EINVAL));
++        }
++        if len == 0 {
++            return Ok(());
++        }
++        let ptr = self.ptr.wrapping_add(offset);
++        let alignment = ptr as usize % page_size();
++        let ptr = ptr.wrapping_sub(alignment);
++        let len = len
++            .checked_add(alignment)
++            .ok_or_else(|| io::Error::from(io::ErrorKind::InvalidInput))?;
++
++        // SAFETY: The range is within the mapping, rounded down to its containing page.
++        let result = unsafe { libc::posix_madvise(ptr, len, advice) };
++        posix_madvise_result(result)
++    }
++
++    #[cfg(any(target_os = "nto", target_os = "qnx"))]
++    pub unsafe fn advise(&self, advice: libc::c_int, offset: usize, len: usize) -> io::Result<()> {
++        self.advise_posix(advice, offset, len)
++    }
++
+     /// Perform an `madvise()`.
+     ///
+     /// # Safety
+     ///
+     /// Some `advise` values can be unsound depending on the situation.
+     /// It is up to the caller to only perform sound madvise() calls on the memory range.
++    #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
+     pub unsafe fn advise(&self, advice: libc::c_int, offset: usize, len: usize) -> io::Result<()> {
+         if offset > self.len || len > self.len {
+             return Err(std::io::ErrorKind::InvalidInput.into());
+@@ -548,3 +582,127 @@ pub fn file_len(file: RawFd) -> io::Result<u64> {
+         Ok(file.metadata()?.len())
+     }
+ }
++
++#[cfg(any(
++    target_os = "nto",
++    target_os = "qnx",
++    all(test, any(target_os = "linux", target_os = "macos"))
++))]
++fn posix_madvise_result(result: libc::c_int) -> io::Result<()> {
++    if result == 0 {
++        Ok(())
++    } else {
++        // Unlike madvise, posix_madvise returns the error number directly.
++        Err(io::Error::from_raw_os_error(result))
++    }
++}
++
++#[cfg(all(
++    test,
++    any(
++        target_os = "nto",
++        target_os = "qnx",
++        target_os = "linux",
++        target_os = "macos"
++    )
++))]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn posix_advice_hints() {
++        let mmap = MmapInner::map_anon(page_size(), false, false, None, false).unwrap();
++        for advice in [
++            libc::POSIX_MADV_NORMAL,
++            libc::POSIX_MADV_RANDOM,
++            libc::POSIX_MADV_SEQUENTIAL,
++            libc::POSIX_MADV_WILLNEED,
++        ] {
++            mmap.advise_posix(advice, 0, mmap.len()).unwrap();
++            mmap.advise_posix(advice, 1, mmap.len() - 1).unwrap();
++            mmap.advise_posix(advice, 0, 0).unwrap();
++            mmap.advise_posix(advice, mmap.len(), 0).unwrap();
++        }
++    }
++
++    fn check_later_page_ranges(mmap: &MmapInner) {
++        let page = page_size();
++        for (offset, len) in [
++            (page + 1, 1),
++            (page - 1, 2),
++            (page + 1, mmap.len() - page - 1),
++            (mmap.len() - 1, 1),
++        ] {
++            mmap.advise_posix(libc::POSIX_MADV_RANDOM, offset, len)
++                .unwrap();
++        }
++    }
++
++    #[test]
++    fn posix_advice_later_page_ranges() {
++        let mmap = MmapInner::map_anon(3 * page_size(), false, false, None, false).unwrap();
++        check_later_page_ranges(&mmap);
++    }
++
++    #[test]
++    fn posix_advice_file_offset_ranges() {
++        let file = tempfile::tempfile().unwrap();
++        file.set_len((3 * page_size()) as u64).unwrap();
++        // SAFETY: The temporary file is not modified while its mapping exists.
++        let mmap = unsafe {
++            crate::MmapOptions::new()
++                .offset(1)
++                .len(3 * page_size() - 1)
++                .map(&file)
++                .unwrap()
++        };
++        assert_eq!(mmap.as_ptr() as usize % page_size(), 1);
++        check_later_page_ranges(&mmap.inner);
++    }
++
++    #[test]
++    fn posix_advice_errors() {
++        let mmap = MmapInner::map_anon(page_size(), false, false, None, false).unwrap();
++        for (offset, len) in [
++            (0, mmap.len()),
++            (0, 0),
++            (mmap.len(), 0),
++            (mmap.len() + 1, 0),
++        ] {
++            assert_eq!(
++                mmap.advise_posix(libc::POSIX_MADV_DONTNEED, offset, len)
++                    .unwrap_err()
++                    .kind(),
++                io::ErrorKind::Unsupported
++            );
++        }
++        for (offset, len) in [
++            (mmap.len() + 1, 0),
++            (mmap.len(), 1),
++            (1, mmap.len()),
++            (usize::MAX, 0),
++            (usize::MAX, 1),
++            (1, usize::MAX),
++        ] {
++            assert_eq!(
++                mmap.advise_posix(libc::POSIX_MADV_RANDOM, offset, len)
++                    .unwrap_err()
++                    .raw_os_error(),
++                Some(libc::EINVAL)
++            );
++        }
++
++        // Leave a different errno behind to detect accidental last_os_error() handling.
++        assert_eq!(unsafe { libc::close(-1) }, -1);
++        assert_eq!(
++            posix_madvise_result(libc::EINVAL)
++                .unwrap_err()
++                .raw_os_error(),
++            Some(libc::EINVAL)
++        );
++        posix_madvise_result(0).unwrap();
++
++        let empty = MmapInner::map_anon(0, false, false, None, false).unwrap();
++        empty.advise_posix(libc::POSIX_MADV_RANDOM, 0, 0).unwrap();
++    }
++}

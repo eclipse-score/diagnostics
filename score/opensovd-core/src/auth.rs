@@ -117,7 +117,7 @@ fn placeholder_token(subject: &str, now: u64) -> Result<String, jsonwebtoken::er
     encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(CDA_DEVELOPMENT_KEY),
+        &EncodingKey::from_secret(CDA_DEVELOPMENT_KEY)?,
     )
 }
 
@@ -207,7 +207,7 @@ async fn authorize(body: Bytes) -> Response {
 /// tokens; `None` selects Core's own JWT configuration (`--auth-jwks`, `--auth-issuer`), where an
 /// external issuer issues the tokens and the gateway serves no `authorize`.
 pub fn configured(options: &opensovd_gateway::cli::Cli) -> Option<Auth> {
-    options.auth.jwks.is_none().then(|| {
+    (!options.server.auth_enabled()).then(|| {
         Auth::new(AnyBearerToken, TokenRequired).with_authorize(MethodRouter::new().post(authorize))
     })
 }

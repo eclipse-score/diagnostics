@@ -89,7 +89,7 @@ fn issued_token(response: &str) -> String {
 fn decode_like_the_cda(token: &str) -> serde_json::Value {
     jsonwebtoken::decode::<serde_json::Value>(
         token,
-        &jsonwebtoken::DecodingKey::from_secret(b"secret"),
+        &jsonwebtoken::DecodingKey::from_secret(b"secret").expect("development key"),
         &jsonwebtoken::Validation::default(),
     )
     .expect("the CDA's verification accepts the token")
@@ -244,7 +244,7 @@ async fn authorize_issues_a_token_that_the_gateway_accepts_and_forwards() {
     assert!(
         jsonwebtoken::decode::<serde_json::Value>(
             &token,
-            &jsonwebtoken::DecodingKey::from_secret(b"other"),
+            &jsonwebtoken::DecodingKey::from_secret(b"other").expect("wrong test key"),
             &jsonwebtoken::Validation::default(),
         )
         .is_err(),
