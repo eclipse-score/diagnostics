@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.bzlmod_consumer_test import prepare_consumer_workspace
 from tools.override_manifest import manifest_from_module
+from tools.qnx_overlays import diff_file
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -77,8 +78,15 @@ def main() -> None:
         _ = (source / "patches" / "fixture.patch").write_text(
             "--- a/BUILD.bazel\n+++ b/BUILD.bazel\n@@ -1 +1,2 @@\n"
             + ' exports_files(["marker.txt"])\n'
-            + '+filegroup(name = "patched_target", srcs = ["marker.txt"], '
+            + '+filegroup(name = "patched_target", srcs = ["marker.txt", '
+            + '"//nested_patches:payload.patch"], '
             + 'visibility = ["//visibility:public"])\n'
+            + diff_file(
+                "nested_patches/BUILD.bazel",
+                "",
+                'exports_files(["payload.patch"])\n',
+            )
+            + diff_file("nested_patches/payload.patch", "", "canonical payload\n")
         )
         registry = base / "empty-registry"
         registry.mkdir()
@@ -141,6 +149,7 @@ def main() -> None:
                     result.returncode
                     or "//:patched_target" not in result.stdout
                     or "//:marker.txt" not in result.stdout
+                    or "//nested_patches:payload.patch" not in result.stdout
                 ):
                     raise RuntimeError(f"patched target not resolved:\n{result.stderr}")
             elif (
