@@ -21,6 +21,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests import qnx_overlay_tests
 from tests.bzlmod_consumer_test import prepare_consumer_workspace
 from tools.override_manifest import manifest_from_module
 
@@ -134,6 +135,14 @@ git_override(module_name="a", remote="https://example/a", commit="{b}")
                 with self.assertRaises((ValueError, TypeError)):
                     prepare_consumer_workspace(manifest, root, workspace)
                 self.assertEqual(list(workspace.iterdir()), [])
+
+
+def load_tests(
+    loader: unittest.TestLoader, suite: unittest.TestSuite, _pattern: str | None
+) -> unittest.TestSuite:
+    # Existing CI discovers this module explicitly.
+    suite.addTests(loader.loadTestsFromTestCase(qnx_overlay_tests.QnxOverlaysTest))
+    return suite
 
 
 if __name__ == "__main__":
