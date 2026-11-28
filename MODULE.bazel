@@ -14,10 +14,12 @@ module(name = "score_diagnostics")
 
 bazel_dep(name = "classic-diagnostic-adapter", version = "0.1.0")
 
-# This revision exports requirements_docs for the downstream requirements build.
+# Includes the upstream QNX source fixes and public requirements documentation.
 git_override(
     module_name = "classic-diagnostic-adapter",
-    commit = "0946583dd9da16d59ff17c3407386f94f0ea9dd2",
+    commit = "7272ed1bf85fce562f741ec958e504421defa3c1",
+    patch_strip = 1,
+    patches = ["//patches:cda-qnx.patch"],
     remote = "https://github.com/eclipse-opensovd/classic-diagnostic-adapter.git",
 )
 
@@ -37,19 +39,20 @@ bazel_dep(name = "rules_foreign_cc", version = "0.17.0")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "opensovd_core", version = "0.0.0")
 
-# feat/score-integration includes the embeddable gateway runner, the public mDNS target and the
-# public client, server and shared dependency targets, and Client::authorize.
-# This branch also provides the gateway's declared build-stamp input.
+# Published Core source fixes remain upstream; the overlay only supplies local
+# external-crate patches and selector metadata for this consumer's crate universe.
 git_override(
     module_name = "opensovd_core",
-    commit = "90eead01d42a873dd7365d1c9762c21c147ef283",
+    commit = "f639b04b00a138043b13bbc1c604e16844b58b7e",
+    patch_strip = 1,
+    patches = ["//patches:core-qnx.patch"],
     remote = "https://github.com/eclipse-opensovd/opensovd-core.git",
 )
 
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "score_bazel_platforms", version = "1.3.0")
 
-bazel_dep(name = "score_bazel_cpp_toolchains", version = "1.0.5", dev_dependency = True)
+bazel_dep(name = "score_bazel_cpp_toolchains", version = "1.1.0-rc3", dev_dependency = True)
 
 gcc = use_extension("@score_bazel_cpp_toolchains//extensions:gcc.bzl", "gcc", dev_dependency = True)
 gcc.toolchain(
@@ -59,7 +62,28 @@ gcc.toolchain(
     use_default_package = True,
     version = "12.2.0",
 )
-use_repo(gcc, "score_gcc_x86_64_toolchain")
+gcc.toolchain(
+    name = "score_qcc_aarch64_toolchain",
+    sdp_version = "8.0.5",
+    target_cpu = "aarch64",
+    target_os = "qnx",
+    use_default_package = True,
+    version = "12.2.0",
+)
+gcc.toolchain(
+    name = "score_qcc_x86_64_toolchain",
+    sdp_version = "8.0.5",
+    target_cpu = "x86_64",
+    target_os = "qnx",
+    use_default_package = True,
+    version = "12.2.0",
+)
+use_repo(
+    gcc,
+    "score_gcc_x86_64_toolchain",
+    "score_qcc_aarch64_toolchain",
+    "score_qcc_x86_64_toolchain",
+)
 
 # Public gateway and CDA packages load Python rules, even when building non-Python targets.
 bazel_dep(name = "rules_python", version = "1.9.0")
@@ -166,7 +190,7 @@ crate.from_specs(
 use_repo(crate, "score_crate_index")
 
 # C/C++ rules for Bazel
-bazel_dep(name = "rules_cc", version = "0.2.18")
+bazel_dep(name = "rules_cc", version = "0.2.25")
 
 # functional deps
 bazel_dep(name = "score_baselibs", version = "0.2.9")

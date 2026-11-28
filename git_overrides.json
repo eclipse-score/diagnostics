@@ -1,8 +1,12 @@
 {
   "git_overrides": [
     {
-      "commit": "0946583dd9da16d59ff17c3407386f94f0ea9dd2",
+      "commit": "7272ed1bf85fce562f741ec958e504421defa3c1",
       "module_name": "classic-diagnostic-adapter",
+      "patch_strip": 1,
+      "patches": [
+        "//patches:cda-qnx.patch"
+      ],
       "remote": "https://github.com/eclipse-opensovd/classic-diagnostic-adapter.git"
     },
     {
@@ -11,8 +15,12 @@
       "remote": "https://github.com/eclipse-opensovd/mbedtls-rs.git"
     },
     {
-      "commit": "90eead01d42a873dd7365d1c9762c21c147ef283",
+      "commit": "f639b04b00a138043b13bbc1c604e16844b58b7e",
       "module_name": "opensovd_core",
+      "patch_strip": 1,
+      "patches": [
+        "//patches:core-qnx.patch"
+      ],
       "remote": "https://github.com/eclipse-opensovd/opensovd-core.git"
     }
   ],

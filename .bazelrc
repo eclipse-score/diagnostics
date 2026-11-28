@@ -71,6 +71,22 @@ common:score_diag_x86_64_linux --config=_score_diag_common_build_settings
 common:score_diag_x86_64_linux --config=_score_diag_use_gcc_based_host_platform
 common:score_diag_x86_64_linux --config=_score_diag_build_for_x86_64_linux_target_platform
 
+# The provider maps the actual SDP 8.0.5 package to its canonical 8.0.0 constraint.
+common:_score_diag_qnx --config=_score_diag_common_build_settings
+common:_score_diag_qnx --config=_score_diag_use_gcc_based_host_platform
+build:_score_diag_qnx --incompatible_enable_cc_toolchain_resolution
+build:_score_diag_qnx --sandbox_writable_path=/var/tmp
+
+common:score_diag_x86_64_qnx --config=_score_diag_qnx
+common:score_diag_x86_64_qnx --platforms=@score_bazel_platforms//:x86_64-qnx-sdp_8.0.0-posix
+common:score_diag_x86_64_qnx --extra_toolchains=@score_qcc_x86_64_toolchain//:x86_64-qnx-sdp_8.0.0
+common:score_diag_x86_64_qnx --extra_toolchains=@score_toolchains_rust//toolchains/ferrocene:ferrocene_x86_64_pc_nto_qnx800
+
+common:score_diag_aarch64_qnx --config=_score_diag_qnx
+common:score_diag_aarch64_qnx --platforms=@score_bazel_platforms//:aarch64-qnx-sdp_8.0.0-posix
+common:score_diag_aarch64_qnx --extra_toolchains=@score_qcc_aarch64_toolchain//:aarch64-qnx-sdp_8.0.0
+common:score_diag_aarch64_qnx --extra_toolchains=@score_toolchains_rust//toolchains/ferrocene:ferrocene_aarch64_unknown_nto_qnx800
+
 # Import custom user settings
 # Can be used to e.g. enable custom features without modifying this main .bazelrc
 try-import %workspace%/user.bazelrc
