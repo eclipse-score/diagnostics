@@ -1,0 +1,219 @@
+# SPDX-FileCopyrightText: 2025 Pixsper
+# SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
+# SPDX-License-Identifier: MIT
+#
+# Use native QNX BSD packet metadata and IPv6 multicast membership options.
+# Upstream: https://github.com/pixsper/socket-pktinfo
+# Published 0.4.1 base: 5b865388c8891b606056a639456c403f98c6b282
+# Cross-built only with QNX SDK 8: x86_64/aarch64 S-CORE nto/nto80 targets.
+# QNX runtime and QNX7 are untested; no new QNX7 support is claimed.
+# Modern target_os = "qnx" guards are present but untested (no target std).
+# License text: LICENSES/MIT.txt in the consuming Core repository.
+diff --git a/Cargo.toml b/Cargo.toml
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -15,4 +15,7 @@
+
++[lints.rust]
++unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("qnx"))'] }
++
+ [dependencies.socket2]
+ version = "0.6"
+ features = ["all"]
+diff --git a/src/unix.rs b/src/unix.rs
+index 06a8106..1e08c0b 100644
+--- a/src/unix.rs
++++ b/src/unix.rs
+@@ -56,7 +56,7 @@ impl PktInfoUdpSocket {
+         let socket = Socket::new(domain, Type::DGRAM, Some(Protocol::UDP))?;
+
+         match domain {
+-            #[cfg(target_os = "freebsd")]
++            #[cfg(any(target_os = "freebsd", target_os = "nto", target_os = "qnx"))]
+             Domain::IPV4 => unsafe {
+                 setsockopt(
+                     socket.as_raw_fd(),
+@@ -66,7 +66,7 @@ impl PktInfoUdpSocket {
+                 )?;
+                 setsockopt(socket.as_raw_fd(), libc::IPPROTO_IP, libc::IP_RECVIF, 1)?;
+             },
+-            #[cfg(not(target_os = "freebsd"))]
++            #[cfg(not(any(target_os = "freebsd", target_os = "nto", target_os = "qnx")))]
+             Domain::IPV4 => unsafe {
+                 setsockopt(socket.as_raw_fd(), libc::IPPROTO_IP, libc::IP_PKTINFO, 1)?;
+             },
+@@ -117,12 +117,42 @@ impl PktInfoUdpSocket {
+     }
+
+     pub fn join_multicast_v6(&self, addr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+-        self.socket.join_multicast_v6(addr, interface)
++        #[cfg(any(target_os = "nto", target_os = "qnx"))]
++        {
++            self.multicast_membership_v6(addr, interface, libc::IPV6_JOIN_GROUP)
++        }
++        #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
++        {
++            self.socket.join_multicast_v6(addr, interface)
++        }
+     }
+
+     /// Drop membership in a multicast group for IPv6.
+     pub fn leave_multicast_v6(&self, addr: &Ipv6Addr, interface: u32) -> io::Result<()> {
+-        self.socket.leave_multicast_v6(addr, interface)
++        #[cfg(any(target_os = "nto", target_os = "qnx"))]
++        {
++            self.multicast_membership_v6(addr, interface, libc::IPV6_LEAVE_GROUP)
++        }
++        #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
++        {
++            self.socket.leave_multicast_v6(addr, interface)
++        }
++    }
++
++    #[cfg(any(target_os = "nto", target_os = "qnx"))]
++    fn multicast_membership_v6(
++        &self,
++        addr: &Ipv6Addr,
++        interface: u32,
++        option: libc::c_int,
++    ) -> io::Result<()> {
++        let request = libc::ipv6_mreq {
++            ipv6mr_multiaddr: libc::in6_addr {
++                s6_addr: addr.octets(),
++            },
++            ipv6mr_interface: interface,
++        };
++        unsafe { setsockopt(self.socket.as_raw_fd(), libc::IPPROTO_IPV6, option, request) }
+     }
+
+     pub fn set_multicast_if_v6(&self, interface: u32) -> io::Result<()> {
+@@ -158,13 +188,13 @@ impl PktInfoUdpSocket {
+         let mut msg_iov = IoSliceMut::new(buf);
+         let mut cmsg = {
+             let space = if self.domain == Domain::IPV4 {
+-                #[cfg(target_os = "freebsd")]
++                #[cfg(any(target_os = "freebsd", target_os = "nto", target_os = "qnx"))]
+                 unsafe {
+                     libc::CMSG_SPACE(mem::size_of::<libc::in_addr>() as libc::c_uint) as usize
+                         + libc::CMSG_SPACE(mem::size_of::<libc::sockaddr_dl>() as libc::c_uint)
+                             as usize
+                 }
+-                #[cfg(not(target_os = "freebsd"))]
++                #[cfg(not(any(target_os = "freebsd", target_os = "nto", target_os = "qnx")))]
+                 unsafe {
+                     libc::CMSG_SPACE(mem::size_of::<libc::in_pktinfo>() as libc::c_uint) as usize
+                 }
+@@ -221,7 +251,7 @@ impl PktInfoUdpSocket {
+             let p = unsafe { libc::CMSG_DATA(h) };
+
+             match (h.cmsg_level, h.cmsg_type) {
+-                #[cfg(not(target_os = "freebsd"))]
++                #[cfg(not(any(target_os = "freebsd", target_os = "nto", target_os = "qnx")))]
+                 (libc::IPPROTO_IP, libc::IP_PKTINFO) => {
+                     let pktinfo = unsafe { ptr::read_unaligned(p as *const libc::in_pktinfo) };
+                     if_index = Some(pktinfo.ipi_ifindex as u64);
+@@ -229,15 +259,20 @@ impl PktInfoUdpSocket {
+                         pktinfo.ipi_addr.s_addr,
+                     ))));
+                 }
+-                #[cfg(target_os = "freebsd")]
++                #[cfg(any(target_os = "freebsd", target_os = "nto", target_os = "qnx"))]
+                 (libc::IPPROTO_IP, libc::IP_RECVDSTADDR) => {
+                     let in_addr = unsafe { ptr::read_unaligned(p as *const libc::in_addr) };
+                     addr_dst = Some(IpAddr::V4(Ipv4Addr::from(in_addr.s_addr.to_ne_bytes())));
+                 }
+-                #[cfg(target_os = "freebsd")]
++                #[cfg(any(target_os = "freebsd", target_os = "nto", target_os = "qnx"))]
+                 (libc::IPPROTO_IP, libc::IP_RECVIF) => {
+-                    let sockaddr = unsafe { ptr::read_unaligned(p as *const libc::sockaddr_dl) };
+-                    if_index = Some(sockaddr.sdl_index as u64);
++                    // The link-layer address following the index can be variable length.
++                    let index = unsafe {
++                        ptr::read_unaligned(ptr::addr_of!(
++                            (*(p as *const libc::sockaddr_dl)).sdl_index
++                        ))
++                    };
++                    if_index = Some(index as u64);
+                 }
+                 (libc::IPPROTO_IPV6, libc::IPV6_PKTINFO) => {
+                     let pktinfo = unsafe { ptr::read_unaligned(p as *const libc::in6_pktinfo) };
+diff --git a/tests/loopback.rs b/tests/loopback.rs
+new file mode 100644
+--- /dev/null
++++ b/tests/loopback.rs
+@@ -0,0 +1,75 @@
++// SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
++// SPDX-License-Identifier: MIT
++
++use socket2::Domain;
++use socket_pktinfo::PktInfoUdpSocket;
++use std::convert::TryFrom;
++use std::io;
++use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
++use std::time::Duration;
++
++fn loopback_packet(domain: Domain, address: IpAddr) -> io::Result<u32> {
++    let receiver = PktInfoUdpSocket::new(domain)?;
++    receiver.bind(&SocketAddr::new(address, 0).into())?;
++    let cloned = receiver.try_clone_std()?;
++    cloned.set_read_timeout(Some(Duration::from_secs(2)))?;
++    let destination = cloned.local_addr()?;
++    drop(cloned);
++
++    let sender = UdpSocket::bind(SocketAddr::new(address, 0))?;
++    let payload = b"packet info loopback";
++    sender.send_to(payload, destination)?;
++
++    let mut buffer = [0; 64];
++    let (length, info) = receiver.recv(&mut buffer)?;
++    assert_eq!(&buffer[..length], payload);
++    assert_eq!(info.addr_dst, address);
++    assert_eq!(info.addr_src, sender.local_addr()?);
++    assert!(info.if_index > 0);
++    Ok(u32::try_from(info.if_index).expect("interface index fits u32"))
++}
++
++#[test]
++fn ipv4_loopback_destination_and_interface() -> io::Result<()> {
++    loopback_packet(Domain::IPV4, Ipv4Addr::LOCALHOST.into())?;
++    Ok(())
++}
++
++#[test]
++fn ipv4_multicast_destination_and_interface() -> io::Result<()> {
++    let interface = loopback_packet(Domain::IPV4, Ipv4Addr::LOCALHOST.into())?;
++    let group = Ipv4Addr::new(239, 255, 0, 114);
++    let receiver = PktInfoUdpSocket::new(Domain::IPV4)?;
++    receiver.bind(&SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0).into())?;
++    let cloned = receiver.try_clone_std()?;
++    cloned.set_read_timeout(Some(Duration::from_secs(2)))?;
++    let port = cloned.local_addr()?.port();
++    receiver.join_multicast_v4(&group, &Ipv4Addr::LOCALHOST)?;
++
++    let sender = PktInfoUdpSocket::new(Domain::IPV4)?;
++    sender.set_multicast_if_v4(&Ipv4Addr::LOCALHOST)?;
++    sender.set_multicast_loop_v4(true)?;
++    let payload = b"multicast packet info";
++    sender.send_to(payload, &SocketAddr::new(group.into(), port).into())?;
++    let mut buffer = [0; 64];
++    let (length, info) = receiver.recv(&mut buffer)?;
++    assert_eq!(&buffer[..length], payload);
++    assert_eq!(info.addr_dst, IpAddr::V4(group));
++    assert_eq!(info.if_index, u64::from(interface));
++    assert_eq!(info.addr_src.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
++    receiver.leave_multicast_v4(&group, &Ipv4Addr::LOCALHOST)?;
++    Ok(())
++}
++
++#[test]
++fn ipv6_loopback_destination_interface_and_membership() -> io::Result<()> {
++    let interface = loopback_packet(Domain::IPV6, Ipv6Addr::LOCALHOST.into())?;
++    let socket = PktInfoUdpSocket::new(Domain::IPV6)?;
++    let group: Ipv6Addr = "ff02::114".parse().unwrap();
++    socket.join_multicast_v6(&group, interface)?;
++    socket.leave_multicast_v6(&group, interface)?;
++    assert!(socket.join_multicast_v6(&group, u32::MAX).is_err());
++    // A failed membership request must not consume or close the socket.
++    socket.bind(&SocketAddr::new(Ipv6Addr::LOCALHOST.into(), 0).into())?;
++    Ok(())
++}
